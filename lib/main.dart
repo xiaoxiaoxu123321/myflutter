@@ -493,10 +493,10 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   Future<_NfcReadResult> _readTagData(NfcTag tag) async {
     final lines = <String>['读取时间：${_timeText(DateTime.now())}'];
     String? nfcText;
-    final androidTag = NfcTagAndroid.from(tag);
-
-    final androidNdef = NdefAndroid.from(tag);
-    final iosNdef = NdefIos.from(tag);
+    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
+    final androidTag = isIos ? null : NfcTagAndroid.from(tag);
+    final androidNdef = isIos ? null : NdefAndroid.from(tag);
+    final iosNdef = isIos ? NdefIos.from(tag) : null;
     final message = androidNdef != null
         ? await androidNdef.getNdefMessage()
         : iosNdef?.cachedNdefMessage ?? await iosNdef?.readNdef();
