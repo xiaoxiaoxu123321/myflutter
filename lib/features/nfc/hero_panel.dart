@@ -108,10 +108,14 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         onSessionErrorIos: (error) {
           _nfcSessionStarted = false;
           if (!mounted) return;
+          final message = _iosNfcSessionMessage(error);
           setState(() {
-            _nfcMessage = 'NFC读取已结束';
-            _nfcSubMessage = '请重新进入页面后再试';
-            _nfcDataLines = ['iOS NFC 会话错误：$error'];
+            _nfcMessage = message.title;
+            _nfcSubMessage = message.subtitle;
+            _nfcDataLines = [
+              'iOS NFC 状态：${error.code.name}',
+              '系统信息：${error.message}',
+            ];
           });
         },
       );
@@ -137,6 +141,29 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       return '请在系统设置中开启 NFC 后返回应用';
     }
     return '当前设备不支持 NFC 读取';
+  }
+
+  ({String title, String subtitle}) _iosNfcSessionMessage(
+    NfcReaderSessionErrorIos error,
+  ) {
+    return switch (error.code) {
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorFirstNDEFTagRead => (
+        title: 'NFC读取完成',
+        subtitle: '已读取标签内容',
+      ),
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorUserCanceled => (
+        title: 'NFC读取已取消',
+        subtitle: '需要读取时请重新进入页面',
+      ),
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorSessionTimeout => (
+        title: 'NFC读取已超时',
+        subtitle: '请重新进入页面后再试',
+      ),
+      _ => (
+        title: 'NFC读取异常',
+        subtitle: '请查看下方 iOS 错误信息',
+      ),
+    };
   }
 
   Future<_NfcReadResult> _readTagData(NfcTag tag) async {
