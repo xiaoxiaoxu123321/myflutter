@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -282,27 +283,40 @@ class HeroPanel extends StatefulWidget {
   State<HeroPanel> createState() => _HeroPanelState();
 }
 
-class _HeroPanelState extends State<HeroPanel> {
+class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   final _apiClient = ApiClient();
   var _flashTrigger = 0;
   var _nfcMessage = '请将卡片贴近';
   var _nfcSubMessage = '手机NFC感应区';
   var _nfcDataLines = <String>['NFC 已准备，等待卡片靠近'];
   DateTime? _lastDiscoveryAt;
+  var _nfcSessionStarted = false;
+  var _nfcSessionStarting = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startNfcSession();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     NfcManager.instance.stopSession().catchError((_) {});
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_nfcSessionStarted) {
+      _startNfcSession();
+    }
+  }
+
   Future<void> _startNfcSession() async {
+    if (_nfcSessionStarting || _nfcSessionStarted) return;
+    _nfcSessionStarting = true;
     try {
       final availability = await NfcManager.instance.checkAvailability();
       if (!mounted) return;
@@ -310,9 +324,10 @@ class _HeroPanelState extends State<HeroPanel> {
       if (availability != NfcAvailability.enabled) {
         setState(() {
           _nfcMessage = 'NFC暂不可用';
-          _nfcSubMessage = '请确认系统 NFC 已开启';
+          _nfcSubMessage = _nfcUnavailableMessage(availability);
           _nfcDataLines = ['NFC 状态：${availability.name}'];
         });
+        _nfcSessionStarting = false;
         return;
       }
 
@@ -351,15 +366,38 @@ class _HeroPanelState extends State<HeroPanel> {
           });
           _goLoginIfNeeded(dataLines, readResult.text);
         },
+        onSessionErrorIos: (error) {
+          _nfcSessionStarted = false;
+          if (!mounted) return;
+          setState(() {
+            _nfcMessage = 'NFC读取已结束';
+            _nfcSubMessage = '请重新进入页面后再试';
+            _nfcDataLines = ['iOS NFC 会话错误：$error'];
+          });
+        },
       );
+      _nfcSessionStarted = true;
     } catch (error) {
+      _nfcSessionStarted = false;
       if (!mounted) return;
       setState(() {
         _nfcMessage = 'NFC监听未启动';
         _nfcSubMessage = '请确认设备支持NFC';
         _nfcDataLines = ['监听启动失败：${error.runtimeType}'];
       });
+    } finally {
+      _nfcSessionStarting = false;
     }
+  }
+
+  String _nfcUnavailableMessage(NfcAvailability availability) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return 'iPhone 无 NFC 开关，请检查机型和签名权限';
+    }
+    if (availability == NfcAvailability.disabled) {
+      return '请在系统设置中开启 NFC 后返回应用';
+    }
+    return '当前设备不支持 NFC 读取';
   }
 
   Future<_NfcReadResult> _readTagData(NfcTag tag) async {
