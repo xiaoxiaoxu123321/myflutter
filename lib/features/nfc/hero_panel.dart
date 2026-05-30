@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
+import 'package:nfc_manager/nfc_manager_ios.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
 import '../login/login_page.dart';
@@ -65,7 +66,6 @@ class _HeroPanelState extends State<HeroPanel> {
         pollingOptions: {
           NfcPollingOption.iso14443,
           NfcPollingOption.iso15693,
-          NfcPollingOption.iso18092,
         },
         onDiscovered: (tag) async {
           final now = DateTime.now();
@@ -107,26 +107,33 @@ class _HeroPanelState extends State<HeroPanel> {
     String? nfcText;
     final androidTag = NfcTagAndroid.from(tag);
 
-    if (androidTag == null) {
-      lines.add('已发现 NFC 标签');
-      lines.add('原始平台数据不可解析为 Android Tag');
-      return _NfcReadResult(lines: lines);
+    final androidNdef = NdefAndroid.from(tag);
+    final iosNdef = NdefIos.from(tag);
+    final message = androidNdef != null
+        ? await androidNdef.getNdefMessage()
+        : await iosNdef?.readNdef();
+
+    if (androidTag != null) {
+      lines.add('Tag ID：${_hex(androidTag.id)}');
+      lines.add('Tech：${androidTag.techList.join(', ')}');
+    } else {
+      lines.add('已发现 iOS NFC 标签');
     }
 
-    lines.add('Tag ID：${_hex(androidTag.id)}');
-    lines.add('Tech：${androidTag.techList.join(', ')}');
-
-    final ndef = NdefAndroid.from(tag);
-    if (ndef == null) {
+    if (androidNdef == null && iosNdef == null) {
       lines.add('NDEF：不支持或没有 NDEF 数据');
       return _NfcReadResult(lines: lines);
     }
 
-    lines.add('NDEF 类型：${ndef.type}');
-    lines.add('可写入：${ndef.isWritable ? '是' : '否'}');
-    lines.add('最大容量：${ndef.maxSize} bytes');
+    if (androidNdef != null) {
+      lines.add('NDEF 类型：${androidNdef.type}');
+      lines.add('可写入：${androidNdef.isWritable ? '是' : '否'}');
+      lines.add('最大容量：${androidNdef.maxSize} bytes');
+    } else {
+      lines.add('NDEF 状态：${iosNdef!.status.name}');
+      lines.add('最大容量：${iosNdef.capacity} bytes');
+    }
 
-    final message = await ndef.getNdefMessage();
     final records = message?.records ?? const [];
     lines.add('记录数量：${records.length}');
 
