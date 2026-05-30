@@ -36,7 +36,13 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _startNfcSession();
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      _nfcMessage = '点击开始读取';
+      _nfcSubMessage = '将卡片靠近 iPhone 顶部';
+      _nfcDataLines = ['点击中间 NFC 图标开始扫描'];
+    } else {
+      _startNfcSession();
+    }
   }
 
   @override
@@ -48,7 +54,9 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_nfcSessionStarted) {
+    if (defaultTargetPlatform != TargetPlatform.iOS &&
+        state == AppLifecycleState.resumed &&
+        !_nfcSessionStarted) {
       _startNfcSession();
     }
   }
@@ -107,6 +115,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         },
         onSessionErrorIos: (error) {
           _nfcSessionStarted = false;
+          _clearIosNfcSession();
           if (!mounted) return;
           final message = _iosNfcSessionMessage(error);
           setState(() {
@@ -118,6 +127,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             ];
           });
         },
+        alertMessageIos: '请将 NFC 标签靠近 iPhone 顶部。',
       );
       _nfcSessionStarted = true;
     } catch (error) {
@@ -131,6 +141,15 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     } finally {
       _nfcSessionStarting = false;
     }
+  }
+
+  Future<void> _clearIosNfcSession() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {}
+    _nfcSessionStarted = false;
+    _nfcSessionStarting = false;
   }
 
   String _nfcUnavailableMessage(NfcAvailability availability) {
@@ -161,7 +180,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       ),
       _ => (
         title: 'NFC读取异常',
-        subtitle: '请查看下方 iOS 错误信息',
+        subtitle: '请点击中间 NFC 图标重试',
       ),
     };
   }
@@ -313,6 +332,16 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     _goLoginIfNeeded(dataLines, '123456');
   }
 
+  Future<void> _handleNfcOrbTap() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      if (_nfcSessionStarted || _nfcSessionStarting) return;
+      await _clearIosNfcSession();
+      await _startNfcSession();
+      return;
+    }
+    await _simulateRead();
+  }
+
   void _goLoginIfNeeded(List<String> nfcDataLines, String? nfcText) {
     if (AuthSession.isLoggedIn) return;
     Navigator.of(context).push(
@@ -369,7 +398,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             right: 0,
             bottom: 86,
             child: Center(
-              child: NfcOrb(flashTrigger: _flashTrigger, onTap: _simulateRead),
+              child: NfcOrb(flashTrigger: _flashTrigger, onTap: _handleNfcOrbTap),
             ),
           ),
           Positioned(
