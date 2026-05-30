@@ -1,4 +1,4 @@
-package com.example.dimensional
+package com.onlydu
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity

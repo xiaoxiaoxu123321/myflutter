@@ -1,4 +1,4 @@
-package com.example.dimensional
+package com.onlydu
 
 import android.app.Activity
 import android.graphics.Color
