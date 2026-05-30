@@ -28,6 +28,10 @@
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>用于读取 NFC 标签内容并绑定您的资产。</string>
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>D2760000850101</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

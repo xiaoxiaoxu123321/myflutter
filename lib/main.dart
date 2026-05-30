@@ -348,7 +348,8 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       await NfcManager.instance.startSession(
         pollingOptions: {
           NfcPollingOption.iso14443,
-          NfcPollingOption.iso15693,
+          if (defaultTargetPlatform != TargetPlatform.iOS)
+            NfcPollingOption.iso15693,
         },
         onDiscovered: (tag) async {
           final now = DateTime.now();
@@ -455,7 +456,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     final iosNdef = NdefIos.from(tag);
     final message = androidNdef != null
         ? await androidNdef.getNdefMessage()
-        : await iosNdef?.readNdef();
+        : iosNdef?.cachedNdefMessage ?? await iosNdef?.readNdef();
 
     if (androidTag != null) {
       lines.add('Tag ID：${_hex(androidTag.id)}');
