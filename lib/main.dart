@@ -292,6 +292,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   DateTime? _lastDiscoveryAt;
   var _nfcSessionStarted = false;
   var _nfcSessionStarting = false;
+  var _iosTagReadCompleted = false;
 
   @override
   void initState() {
@@ -344,6 +345,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         _nfcSubMessage = '手机NFC感应区';
         _nfcDataLines = ['NFC 已开启，等待卡片靠近'];
       });
+      _iosTagReadCompleted = false;
 
       await NfcManager.instance.startSession(
         pollingOptions: {
@@ -373,11 +375,16 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
             _nfcDataLines = dataLines;
           });
+          if (defaultTargetPlatform == TargetPlatform.iOS) {
+            _iosTagReadCompleted = true;
+            await _clearIosNfcSession(alertMessageIos: '读取成功');
+          }
           _goLoginIfNeeded(dataLines, readResult.text);
         },
         onSessionErrorIos: (error) {
           _nfcSessionStarted = false;
           _clearIosNfcSession();
+          if (_iosTagReadCompleted) return;
           if (!mounted) return;
           final message = _iosNfcSessionMessage(error);
           setState(() {
@@ -390,6 +397,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           });
         },
         alertMessageIos: '请将 NFC 标签靠近 iPhone 顶部。',
+        invalidateAfterFirstReadIos: false,
       );
       _nfcSessionStarted = true;
     } catch (error) {
@@ -405,10 +413,10 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _clearIosNfcSession() async {
+  Future<void> _clearIosNfcSession({String? alertMessageIos}) async {
     if (defaultTargetPlatform != TargetPlatform.iOS) return;
     try {
-      await NfcManager.instance.stopSession();
+      await NfcManager.instance.stopSession(alertMessageIos: alertMessageIos);
     } catch (_) {}
     _nfcSessionStarted = false;
     _nfcSessionStarting = false;
