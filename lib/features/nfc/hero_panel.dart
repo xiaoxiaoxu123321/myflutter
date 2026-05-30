@@ -32,6 +32,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   var _nfcSessionStarted = false;
   var _nfcSessionStarting = false;
   var _iosTagReadCompleted = false;
+  final _nfcTrace = <String>[];
 
   @override
   void initState() {
@@ -65,8 +66,10 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   Future<void> _startNfcSession() async {
     if (_nfcSessionStarting || _nfcSessionStarted) return;
     _nfcSessionStarting = true;
+    _resetNfcTrace('开始请求 NFC 会话');
     try {
       final availability = await NfcManager.instance.checkAvailability();
+      _addNfcTrace('NFC 可用性：${availability.name}');
       if (!mounted) return;
 
       if (availability != NfcAvailability.enabled) {
@@ -93,6 +96,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             NfcPollingOption.iso15693,
         },
         onDiscovered: (tag) async {
+          _addNfcTrace('系统已发现 NFC 标签');
           final now = DateTime.now();
           if (_lastDiscoveryAt != null &&
               now.difference(_lastDiscoveryAt!) <
@@ -101,8 +105,22 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           }
           _lastDiscoveryAt = now;
 
-          final readResult = await _readTagData(tag);
+          late final _NfcReadResult readResult;
+          try {
+            readResult = await _readTagData(tag);
+            _addNfcTrace('NDEF 解析完成');
+          } catch (error) {
+            _addNfcTrace('NDEF 解析失败：$error');
+            if (!mounted) return;
+            setState(() {
+              _nfcMessage = 'NFC标签解析失败';
+              _nfcSubMessage = '请查看下方诊断信息';
+              _nfcDataLines = [..._nfcTrace];
+            });
+            return;
+          }
           final dataLines = [...readResult.lines];
+          dataLines.addAll(_nfcTrace);
           if (AuthSession.isLoggedIn && readResult.text != null) {
             await _bindNfcText(readResult.text!, dataLines);
           }
@@ -124,12 +142,14 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           _nfcSessionStarted = false;
           _clearIosNfcSession();
           if (_iosTagReadCompleted) return;
+          _addNfcTrace('iOS 会话结束：${error.code.name}');
           if (!mounted) return;
           final message = _iosNfcSessionMessage(error);
           setState(() {
             _nfcMessage = message.title;
             _nfcSubMessage = message.subtitle;
             _nfcDataLines = [
+              ..._nfcTrace,
               'iOS NFC 状态：${error.code.name}',
               '系统信息：${error.message}',
             ];
@@ -139,6 +159,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         invalidateAfterFirstReadIos: false,
       );
       _nfcSessionStarted = true;
+      _addNfcTrace('NFC 会话已提交，等待系统发现标签');
     } catch (error) {
       _nfcSessionStarted = false;
       if (!mounted) return;
@@ -150,6 +171,20 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     } finally {
       _nfcSessionStarting = false;
     }
+  }
+
+  void _resetNfcTrace(String message) {
+    _nfcTrace
+      ..clear()
+      ..add('${_timeText(DateTime.now())} $message');
+  }
+
+  void _addNfcTrace(String message) {
+    _nfcTrace.add('${_timeText(DateTime.now())} $message');
+    if (!mounted) return;
+    setState(() {
+      _nfcDataLines = [..._nfcTrace];
+    });
   }
 
   Future<void> _clearIosNfcSession({String? alertMessageIos}) async {
