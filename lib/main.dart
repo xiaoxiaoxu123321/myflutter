@@ -24,7 +24,7 @@ class AuthSession {
 }
 
 class ApiClient {
-  static const String baseUrl = 'http://192.168.3.60:8080';
+  static const String baseUrl = 'https://www.myguanzhu.com';
 
   Future<Map<String, dynamic>> login({
     required String phone,
