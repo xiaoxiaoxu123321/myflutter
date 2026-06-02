@@ -567,6 +567,21 @@ class AssetCharacterCard extends StatelessWidget {
               ),
             ),
           ),
+          if (data.sourceType == 2)
+            Positioned(
+              top: 7,
+              left: 7,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xCC563594),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD9B7FF)),
+                ),
+                child: const Icon(Icons.cloud_upload_outlined, color: Colors.white, size: 16),
+              ),
+            ),
           if (openingVideo)
             const Positioned.fill(
               child: IgnorePointer(
@@ -637,6 +652,7 @@ class AssetCharacterData {
     this.coverImageUrl,
     this.previewVideoObjectKey,
     this.previewVideoUrl,
+    this.sourceType,
   );
 
   factory AssetCharacterData.fromJson(Map<String, dynamic> json) {
@@ -651,6 +667,7 @@ class AssetCharacterData {
       json['coverImageUrl']?.toString(),
       json['previewVideoObjectKey']?.toString(),
       json['previewVideoUrl']?.toString(),
+      (json['sourceType'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -662,6 +679,7 @@ class AssetCharacterData {
   final String? coverImageUrl;
   final String? previewVideoObjectKey;
   final String? previewVideoUrl;
+  final int sourceType;
 
   static Color _accentForRarity(String rarity) {
     return switch (rarity.toUpperCase()) {

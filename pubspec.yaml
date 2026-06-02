@@ -37,6 +37,8 @@ dependencies:
   nfc_manager: ^4.2.1
   http: ^1.6.0
   video_player: ^2.11.1
+  image_picker: ^1.2.2
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +64,7 @@ flutter:
 
   assets:
     - assets/images/backages.png
+    - assets/images/plaza-hero.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

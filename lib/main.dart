@@ -4,11 +4,14 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:nfc_manager/nfc_manager_ios.dart';
 import 'package:video_player/video_player.dart';
+import 'features/plaza/plaza_page.dart';
 
 void main() {
   runApp(const DimensionalApp());
@@ -21,7 +24,7 @@ class AuthSession {
 }
 
 class ApiClient {
-  static const String baseUrl = 'https://www.myguanzhu.com';
+  static const String baseUrl = 'http://192.168.3.60:8080';
 
   Future<Map<String, dynamic>> login({
     required String phone,
@@ -91,6 +94,72 @@ class ApiClient {
       throw Exception(body['message'] ?? '资产绑定失败');
     }
     return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> scanNfcText({
+    required String token,
+    required String text,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/assets/nfc/scan'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'text': text}),
+    );
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '读取 NFC 卡片失败');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> claimNfcCard({required String token, required int cardId}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/assets/nfc/$cardId/claim'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '领取 NFC 卡片失败');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> nfcCards({required String token}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/assets/nfc'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '获取 NFC 卡片失败');
+    }
+    final data = body['data'] as List<dynamic>? ?? const [];
+    return data.whereType<Map<String, dynamic>>().toList(growable: false);
+  }
+
+  Future<void> bindNfcCharacter({
+    required String token,
+    required int cardId,
+    required int characterCollectionId,
+    required bool giftModeEnabled,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/assets/nfc/$cardId/character'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'characterCollectionId': characterCollectionId,
+        'giftModeEnabled': giftModeEnabled,
+      }),
+    );
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '绑定角色失败');
+    }
   }
 
   Future<Map<String, dynamic>> giftDrawSummary({required String token}) async {
@@ -185,6 +254,42 @@ class ApiClient {
     final data = body['data'] as List<dynamic>? ?? const [];
     return data.whereType<Map<String, dynamic>>().toList(growable: false);
   }
+
+  Future<Map<String, dynamic>> customCharacterQuota({required String token}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/custom-characters/quota'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '获取上传额度失败');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> uploadCustomCharacter({
+    required String token,
+    required Map<String, String> fields,
+    required XFile image,
+    XFile? video,
+    XFile? audio,
+  }) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/custom-characters'))
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields.addAll(fields)
+      ..files.add(http.MultipartFile.fromBytes('image', await image.readAsBytes(), filename: image.name));
+    if (video != null) {
+      request.files.add(http.MultipartFile.fromBytes('video', await video.readAsBytes(), filename: video.name));
+    }
+    if (audio != null) {
+      request.files.add(http.MultipartFile.fromBytes('audio', await audio.readAsBytes(), filename: audio.name));
+    }
+    final response = await http.Response.fromStream(await request.send());
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '上传自定义人物失败');
+    }
+  }
 }
 
 class _NfcReadResult {
@@ -233,6 +338,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   var _selectedIndex = 0;
+  var _assetInitialTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -249,10 +355,18 @@ class _HomeShellState extends State<HomeShell> {
                 children: [
                   Expanded(
                     child: switch (_selectedIndex) {
-                      1 => const AssetPageBody(),
+                      1 => AssetPageBody(initialTab: _assetInitialTab),
                       2 => const GiftPageBody(),
+                      3 => PlazaPageBody(
+                        onOpenGift: () => setState(() => _selectedIndex = 2),
+                      ),
                       4 => const ProfilePageBody(),
-                      _ => const HeroPanel(),
+                      _ => HeroPanel(
+                        onOpenMyCards: () => setState(() {
+                          _assetInitialTab = 1;
+                          _selectedIndex = 1;
+                        }),
+                      ),
                     },
                   ),
                   if (_selectedIndex == 0) ...[
@@ -263,6 +377,7 @@ class _HomeShellState extends State<HomeShell> {
                   BottomTabs(
                     selectedIndex: _selectedIndex,
                     onSelected: (index) => setState(() {
+                      if (index == 1) _assetInitialTab = 0;
                       _selectedIndex = index;
                     }),
                   ),
@@ -277,7 +392,9 @@ class _HomeShellState extends State<HomeShell> {
 }
 
 class HeroPanel extends StatefulWidget {
-  const HeroPanel({super.key});
+  const HeroPanel({super.key, required this.onOpenMyCards});
+
+  final VoidCallback onOpenMyCards;
 
   @override
   State<HeroPanel> createState() => _HeroPanelState();
@@ -286,9 +403,8 @@ class HeroPanel extends StatefulWidget {
 class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   final _apiClient = ApiClient();
   var _flashTrigger = 0;
-  var _nfcMessage = '请将卡片贴近';
-  var _nfcSubMessage = '手机NFC感应区';
-  var _nfcDataLines = <String>['NFC 已准备，等待卡片靠近'];
+  var _nfcMessage = '点击开始读取';
+  var _nfcSubMessage = '点击后将卡片贴近手机NFC感应区';
   DateTime? _lastDiscoveryAt;
   var _nfcSessionStarted = false;
   var _nfcSessionStarting = false;
@@ -299,13 +415,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      _nfcMessage = '点击开始读取';
-      _nfcSubMessage = '将卡片靠近 iPhone 顶部';
-      _nfcDataLines = ['点击中间 NFC 图标开始扫描'];
-    } else {
-      _startNfcSession();
-    }
   }
 
   @override
@@ -316,13 +425,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (defaultTargetPlatform != TargetPlatform.iOS &&
-        state == AppLifecycleState.resumed &&
-        !_nfcSessionStarted) {
-      _startNfcSession();
-    }
-  }
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
 
   Future<void> _startNfcSession() async {
     if (_nfcSessionStarting || _nfcSessionStarted) return;
@@ -337,7 +440,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         setState(() {
           _nfcMessage = 'NFC暂不可用';
           _nfcSubMessage = _nfcUnavailableMessage(availability);
-          _nfcDataLines = ['NFC 状态：${availability.name}'];
         });
         _nfcSessionStarting = false;
         return;
@@ -346,7 +448,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       setState(() {
         _nfcMessage = '请将卡片贴近';
         _nfcSubMessage = '手机NFC感应区';
-        _nfcDataLines = ['NFC 已开启，等待卡片靠近'];
       });
       _iosTagReadCompleted = false;
 
@@ -376,12 +477,12 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             setState(() {
               _nfcMessage = 'NFC标签解析失败';
               _nfcSubMessage = '请查看下方诊断信息';
-              _nfcDataLines = [..._nfcTrace];
             });
             return;
           }
           final dataLines = [...readResult.lines];
           dataLines.addAll(_nfcTrace);
+          await _clearNfcSession(alertMessageIos: '读取成功');
           if (AuthSession.isLoggedIn && readResult.text != null) {
             await _bindNfcText(readResult.text!, dataLines);
           }
@@ -391,12 +492,8 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             _flashTrigger++;
             _nfcMessage = '已感应到卡片';
             _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
-            _nfcDataLines = dataLines;
           });
-          if (defaultTargetPlatform == TargetPlatform.iOS) {
-            _iosTagReadCompleted = true;
-            await _clearIosNfcSession(alertMessageIos: '读取成功');
-          }
+          _iosTagReadCompleted = true;
           _goLoginIfNeeded(dataLines, readResult.text);
         },
         onSessionErrorIos: (error) {
@@ -409,11 +506,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           setState(() {
             _nfcMessage = message.title;
             _nfcSubMessage = message.subtitle;
-            _nfcDataLines = [
-              ..._nfcTrace,
-              'iOS NFC 状态：${error.code.name}',
-              '系统信息：${error.message}',
-            ];
           });
         },
         alertMessageIos: '请将 NFC 标签靠近 iPhone 顶部。',
@@ -427,7 +519,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       setState(() {
         _nfcMessage = 'NFC监听未启动';
         _nfcSubMessage = '请确认设备支持NFC';
-        _nfcDataLines = ['监听启动失败：${error.runtimeType}'];
       });
     } finally {
       _nfcSessionStarting = false;
@@ -442,14 +533,14 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
 
   void _addNfcTrace(String message) {
     _nfcTrace.add('${_timeText(DateTime.now())} $message');
-    if (!mounted) return;
-    setState(() {
-      _nfcDataLines = [..._nfcTrace];
-    });
   }
 
   Future<void> _clearIosNfcSession({String? alertMessageIos}) async {
     if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    await _clearNfcSession(alertMessageIos: alertMessageIos);
+  }
+
+  Future<void> _clearNfcSession({String? alertMessageIos}) async {
     try {
       await NfcManager.instance.stopSession(alertMessageIos: alertMessageIos);
     } catch (_) {}
@@ -598,53 +689,119 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
 
     try {
-      final asset = await _apiClient.bindNfcText(token: token, text: text);
-      final title = asset['title']?.toString() ?? text;
-      final phone = asset['boundUserPhone']?.toString() ?? '';
-      lines.add('资产绑定：$title');
-      if (phone.isNotEmpty) {
-        lines.add('关联用户：$phone');
+      final scan = await _apiClient.scanNfcText(token: token, text: text);
+      if (scan['status'] == 'AVAILABLE') {
+        final asset = await _apiClient.bindNfcText(token: token, text: text);
+        final title = asset['title']?.toString() ?? text;
+        lines.add('资产绑定成功：$title');
+        if (mounted) await _showNfcBindSuccess(title);
+        return;
       }
+      lines.add('已读取已绑定 NFC 卡片');
+      if (mounted) await _showOwnedNfcCard(scan, token);
     } catch (error) {
-      lines.add('资产绑定失败：${error.toString().replaceFirst('Exception: ', '')}');
+      lines.add('NFC 处理失败：${error.toString().replaceFirst('Exception: ', '')}');
     }
   }
 
-  Future<void> _simulateRead() async {
-    final dataLines = [
-      '读取时间：${_timeText(DateTime.now())}',
-      'Tag ID：04 a2 b3 c4 d5 66 80',
-      'Tech：android.nfc.tech.NfcA, android.nfc.tech.Ndef',
-      'NDEF 类型：org.nfcforum.ndef.type2',
-      '记录数量：1',
-      'Record 1',
-      '  TNF：wellKnown',
-      '  Type：T',
-      '  Payload(text)：123456',
-    ];
+  Future<void> _showNfcBindSuccess(String title) async {
+    final openCards = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('绑卡成功'),
+        content: Text('“$title”已绑定到你的账户。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('知道了')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('查看我的卡片')),
+        ],
+      ),
+    );
+    if (openCards == true && mounted) widget.onOpenMyCards();
+  }
 
-    if (AuthSession.isLoggedIn) {
-      await _bindNfcText('123456', dataLines);
-    }
+  Future<void> _showOwnedNfcCard(Map<String, dynamic> card, String token) async {
+    final cardId = (card['cardId'] as num?)?.toInt();
+    final title = card['title']?.toString() ?? 'NFC 卡片';
+    final characterName = card['characterName']?.toString();
+    final rarity = card['rarity']?.toString();
+    final imageUrl = card['coverImageUrl']?.toString();
+    final ownedByCurrentUser = card['ownedByCurrentUser'] == true;
+    final giftModeEnabled = card['giftModeEnabled'] == true;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 150,
+                height: 190,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF17142A),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF7045C9)),
+                  image: imageUrl == null || imageUrl.isEmpty
+                      ? null
+                      : DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover),
+                ),
+                child: imageUrl == null || imageUrl.isEmpty
+                    ? const Icon(Icons.star_border_rounded, size: 76, color: Color(0xFFD9C4FF))
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              Text(characterName == null || characterName.isEmpty ? '该卡片暂未绑定角色' : characterName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+              if (rarity != null && rarity.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Text(rarity, style: const TextStyle(color: Color(0xFFC5A7FF))),
+              ],
+              const SizedBox(height: 9),
+              Text(
+                ownedByCurrentUser
+                    ? '这是你已经绑定的卡片'
+                    : giftModeEnabled
+                        ? '原持有者已开启赠送模式，可以领取该卡片'
+                        : '该卡片已被其他用户绑定',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFB8B2CE), fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('关闭')),
+          if (ownedByCurrentUser)
+            FilledButton(onPressed: () => Navigator.of(context).pop('cards'), child: const Text('查看我的卡片')),
+          if (!ownedByCurrentUser && giftModeEnabled && cardId != null)
+            FilledButton(onPressed: () => Navigator.of(context).pop('claim'), child: const Text('领取卡片')),
+        ],
+      ),
+    );
     if (!mounted) return;
-
-    setState(() {
-      _flashTrigger++;
-      _nfcMessage = '已模拟感应';
-      _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
-      _nfcDataLines = dataLines;
-    });
-    _goLoginIfNeeded(dataLines, '123456');
+    if (action == 'cards') {
+      widget.onOpenMyCards();
+      return;
+    }
+    if (action == 'claim' && cardId != null) {
+      try {
+        await _apiClient.claimNfcCard(token: token, cardId: cardId);
+        if (!mounted) return;
+        await _showNfcBindSuccess(title);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
   }
 
   Future<void> _handleNfcOrbTap() async {
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      if (_nfcSessionStarted || _nfcSessionStarting) return;
-      await _clearIosNfcSession();
-      await _startNfcSession();
-      return;
-    }
-    await _simulateRead();
+    if (_nfcSessionStarted || _nfcSessionStarting) return;
+    await _clearNfcSession();
+    await _startNfcSession();
   }
 
   void _goLoginIfNeeded(List<String> nfcDataLines, String? nfcText) {
@@ -660,9 +817,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       if (loggedIn != true || nfcText == null || nfcText.isEmpty) return;
       await _bindNfcText(nfcText, nfcDataLines);
       if (!mounted) return;
-      setState(() {
-        _nfcDataLines = [...nfcDataLines];
-      });
     });
   }
 
@@ -697,12 +851,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           const Positioned.fill(child: VignetteLayer()),
           const Positioned(top: 10, left: 12, right: 12, child: TopBar()),
           const Positioned(top: 56, left: 0, right: 0, child: TitleBlock()),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 122,
-            child: NfcDataPanel(lines: _nfcDataLines),
-          ),
           Positioned(
             left: 0,
             right: 0,
@@ -1289,66 +1437,6 @@ class TitleBlock extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class NfcDataPanel extends StatelessWidget {
-  const NfcDataPanel({super.key, required this.lines});
-
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 132,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xCC120F24),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x886F55AD)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x88000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.nfc_rounded, color: Color(0xFFE5B8FF), size: 17),
-              SizedBox(width: 6),
-              Text(
-                'NFC读取结果',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Text(
-                lines.join('\n'),
-                style: const TextStyle(
-                  color: Color(0xFFE8DFFF),
-                  fontSize: 10.5,
-                  height: 1.25,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -2777,8 +2865,19 @@ class GiftCharacterPainter extends CustomPainter {
   }
 }
 
-class AssetPageBody extends StatelessWidget {
-  const AssetPageBody({super.key});
+class AssetPageBody extends StatefulWidget {
+  const AssetPageBody({super.key, this.initialTab = 0});
+
+  final int initialTab;
+
+  @override
+  State<AssetPageBody> createState() => _AssetPageBodyState();
+}
+
+class _AssetPageBodyState extends State<AssetPageBody> {
+  final _apiClient = ApiClient();
+  var _refreshVersion = 0;
+  late var _selectedTab = widget.initialTab;
 
   static const _characters = [
     AssetCharacterData('月璃型 · 澪', '心象频率系列', Color(0xFF9970FF), 0),
@@ -2845,9 +2944,12 @@ class AssetPageBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const AssetSegmentedTabs(),
+                AssetSegmentedTabs(
+                  selectedIndex: _selectedTab,
+                  onSelected: (index) => setState(() => _selectedTab = index),
+                ),
                 const SizedBox(height: 14),
-                Row(
+                if (_selectedTab == 0) Row(
                   children: [
                     const Text(
                       '我的角色',
@@ -2880,7 +2982,7 @@ class AssetPageBody extends StatelessWidget {
                     SizedBox(
                       height: 28,
                       child: FilledButton.icon(
-                        onPressed: () {},
+                        onPressed: _openCustomCharacterUpload,
                         icon: const Icon(Icons.add_rounded, size: 16),
                         label: const Text('上传自定义人物'),
                         style: FilledButton.styleFrom(
@@ -2903,7 +3005,12 @@ class AssetPageBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Expanded(
-                  child: AssetCharacterGrid(fallbackCharacters: _characters),
+                  child: _selectedTab == 0
+                      ? AssetCharacterGrid(
+                          key: ValueKey(_refreshVersion),
+                          fallbackCharacters: _characters,
+                        )
+                      : const AssetNfcCardList(),
                 ),
               ],
             ),
@@ -2911,6 +3018,325 @@ class AssetPageBody extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _openCustomCharacterUpload() async {
+    final token = AuthSession.token;
+    if (token == null || token.isEmpty) {
+      _showMessage('请先登录后上传自定义人物');
+      return;
+    }
+    try {
+      final quota = await _apiClient.customCharacterQuota(token: token);
+      final remaining = (quota['remaining'] as num?)?.toInt() ?? 0;
+      if (remaining <= 0) {
+        _showMessage('本月最多上传 10 个自定义人物');
+        return;
+      }
+      if (!mounted) return;
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (_) => CustomCharacterUploadDialog(
+          token: token,
+          remaining: remaining,
+        ),
+      );
+      if (saved == true && mounted) {
+        setState(() => _refreshVersion++);
+        _showMessage('自定义人物已保存');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class CustomCharacterUploadDialog extends StatefulWidget {
+  const CustomCharacterUploadDialog({
+    super.key,
+    required this.token,
+    required this.remaining,
+  });
+
+  final String token;
+  final int remaining;
+
+  @override
+  State<CustomCharacterUploadDialog> createState() => _CustomCharacterUploadDialogState();
+}
+
+class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialog> {
+  final _apiClient = ApiClient();
+  final _picker = ImagePicker();
+  final _controllers = <String, TextEditingController>{
+    'name': TextEditingController(),
+    'remark': TextEditingController(),
+    'characterProfile': TextEditingController(),
+    'personality': TextEditingController(),
+    'likes': TextEditingController(),
+    'dislikes': TextEditingController(),
+    'catchphrases': TextEditingController(),
+  };
+  XFile? _image;
+  XFile? _video;
+  XFile? _audio;
+  var _saving = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height * 0.92;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 440,
+        height: height,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF10132C), Color(0xFF080D20), Color(0xFF070B19)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF292C59)),
+          boxShadow: const [BoxShadow(color: Color(0xAA000000), blurRadius: 30, offset: Offset(0, 16))],
+        ),
+        child: Column(
+          children: [
+            _header(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+                child: Column(
+                  children: [
+                    _heroUpload(),
+                    const SizedBox(height: 12),
+                    _fileTile(
+                      icon: Icons.video_library_outlined,
+                      title: '人物视频',
+                      subtitle: _video?.name ?? '可选，支持 MP4 / MOV / WEBM',
+                      onTap: _pickVideo,
+                    ),
+                    const SizedBox(height: 10),
+                    _fileTile(
+                      icon: Icons.graphic_eq_rounded,
+                      title: '人物声音 MP3',
+                      subtitle: _audio?.name ?? '可选，上传人物配音或语音样本',
+                      onTap: _pickAudio,
+                      highlighted: true,
+                    ),
+                    const SizedBox(height: 14),
+                    _field('人物名称', 'name', hint: '给你的角色起一个名字', required: true),
+                    _field('角色描述', 'characterProfile', hint: '描述角色背景、经历、能力、特点等...', maxLines: 3, maxLength: 500, required: true),
+                    _field('性格', 'personality', hint: '例如：温柔、傲娇、毒舌、内向、活泼等...', maxLines: 2, maxLength: 200),
+                    _field('喜欢', 'likes', hint: '例如：星空、音乐、甜点、动物等...', maxLines: 2, maxLength: 200),
+                    _field('讨厌', 'dislikes', hint: '例如：噪音、背叛、虚伪、孤独等...', maxLines: 2, maxLength: 200),
+                    _field('口头禅', 'catchphrases', hint: '例如：“这一次，我不会再把你弄丢了。”', maxLines: 2, maxLength: 100),
+                    _field('备注', 'remark', hint: '其他补充信息', maxLines: 2, maxLength: 500),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 10),
+                        child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFFF9BA6))),
+                      ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: _saving ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF6434C5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: _saving
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('保存', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 18, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
+          ),
+          const Expanded(child: Text('上传自定义人物', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+          Text('本月剩余 ${widget.remaining}', style: const TextStyle(color: Color(0xFFC8B9EF), fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroUpload() {
+    return InkWell(
+      onTap: _saving ? null : _pickImage,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        height: 178,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF121630),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFF39366D)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF28205E)),
+              child: const Icon(Icons.add_rounded, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Text(_image?.name ?? '上传人物图片', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD4C9F1), fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(height: 5),
+            const Text('支持 JPG / PNG / WEBP（必填，建议 9:16）', style: TextStyle(color: Color(0xFF9791B8), fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fileTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool highlighted = false,
+  }) {
+    return InkWell(
+      onTap: _saving ? null : onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: const Color(0xFF12162D),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: highlighted ? const Color(0xFF55448E) : const Color(0xFF282D52)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: highlighted ? const Color(0xFFC5A7FF) : const Color(0xFFA9A5C8)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF9590B1), fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF8C86A9)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(String label, String key, {String? hint, int maxLines = 1, int? maxLength, bool required = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF11162C),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF252B50)),
+        ),
+        child: TextField(
+          controller: _controllers[key],
+          maxLines: maxLines,
+          maxLength: maxLength,
+          decoration: InputDecoration(
+            labelText: required ? '$label · 必填' : '$label · 选填',
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFF77728F), fontSize: 13),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null && mounted) setState(() => _image = image);
+  }
+
+  Future<void> _pickVideo() async {
+    final video = await _picker.pickVideo(source: ImageSource.gallery);
+    if (video != null && mounted) setState(() => _video = video);
+  }
+
+  Future<void> _pickAudio() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['mp3'],
+      withData: true,
+    );
+    if (result != null && result.files.isNotEmpty && result.files.first.bytes != null && mounted) {
+      final file = result.files.first;
+      setState(() => _audio = XFile.fromData(file.bytes!, name: file.name, mimeType: 'audio/mpeg'));
+    }
+  }
+
+  Future<void> _save() async {
+    final name = _controllers['name']!.text.trim();
+    if (name.isEmpty || _image == null) {
+      setState(() => _errorMessage = '请填写人物名称并选择图片');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
+    try {
+      await _apiClient.uploadCustomCharacter(
+        token: widget.token,
+        fields: {for (final entry in _controllers.entries) entry.key: entry.value.text.trim()},
+        image: _image!,
+        video: _video,
+        audio: _audio,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 }
 
@@ -2953,9 +3379,9 @@ class _AssetCharacterGridState extends State<AssetCharacterGrid> {
           );
         }
 
-        final characters = (snapshot.data ?? const [])
-            .map(AssetCharacterData.fromJson)
-            .toList(growable: false);
+        final characters = _groupAssetCharacters(
+          (snapshot.data ?? const []).map(AssetCharacterData.fromJson),
+        );
         if (characters.isEmpty) {
           return const _AssetEmptyState(
             icon: Icons.style_outlined,
@@ -3083,6 +3509,8 @@ class _AssetEmptyState extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             message,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFFEFE8FF),
@@ -3097,8 +3525,498 @@ class _AssetEmptyState extends StatelessWidget {
   }
 }
 
+class AssetNfcCardList extends StatefulWidget {
+  const AssetNfcCardList({super.key});
+
+  @override
+  State<AssetNfcCardList> createState() => _AssetNfcCardListState();
+}
+
+class _AssetNfcCardListState extends State<AssetNfcCardList> {
+  final _apiClient = ApiClient();
+  var _refreshVersion = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final token = AuthSession.token;
+    if (token == null || token.isEmpty) {
+      return const _AssetEmptyState(
+        icon: Icons.lock_outline_rounded,
+        message: '请先登录后查看 NFC 卡片',
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      key: ValueKey(_refreshVersion),
+      future: _apiClient.nfcCards(token: token),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _AssetEmptyState(
+            icon: Icons.error_outline_rounded,
+            message: 'NFC 卡片加载失败，请稍后重试',
+          );
+        }
+        final cards = (snapshot.data ?? const [])
+            .map(AssetNfcCardData.fromJson)
+            .toList(growable: false);
+        if (cards.isEmpty) {
+          return const _AssetEmptyState(
+            icon: Icons.nfc_rounded,
+            message: '还没有绑定 NFC 卡片',
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.zero,
+          physics: const BouncingScrollPhysics(),
+          itemCount: cards.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (_, index) => AssetNfcCardTile(
+            data: cards[index],
+            onTap: () => _selectCharacter(cards[index], token),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _selectCharacter(AssetNfcCardData card, String token) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => NfcCharacterBindingPage(card: card, token: token),
+      ),
+    );
+    if (saved == true && mounted) {
+      setState(() => _refreshVersion++);
+      _showMessage('角色已绑定');
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class NfcCharacterBindingPage extends StatefulWidget {
+  const NfcCharacterBindingPage({super.key, required this.card, required this.token});
+
+  final AssetNfcCardData card;
+  final String token;
+
+  @override
+  State<NfcCharacterBindingPage> createState() => _NfcCharacterBindingPageState();
+}
+
+class _NfcCharacterBindingPageState extends State<NfcCharacterBindingPage> {
+  final _apiClient = ApiClient();
+  var _characters = <AssetCharacterData>[];
+  int? _selectedCollectionId;
+  var _loading = true;
+  var _saving = false;
+  late var _giftMode = widget.card.giftModeEnabled;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacters();
+  }
+
+  Future<void> _loadCharacters() async {
+    try {
+      final data = await _apiClient.giftCollections(token: widget.token);
+      if (!mounted) return;
+      setState(() {
+        _characters = _groupAssetCharacters(data.map(AssetCharacterData.fromJson));
+        _selectedCollectionId = _characters.isEmpty ? null : _characters.first.collectionId;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    final selectedIndex = _characters.indexWhere(
+      (character) => character.collectionId == _selectedCollectionId,
+    );
+    if (selectedIndex < 0) return;
+    final selectedCharacter = _characters[selectedIndex];
+    final collectionIds = selectedCharacter.collectionIds;
+    final collectionId = collectionIds[math.Random().nextInt(collectionIds.length)];
+    setState(() => _saving = true);
+    try {
+      await _apiClient.bindNfcCharacter(
+        token: widget.token,
+        cardId: widget.card.id,
+        characterCollectionId: collectionId,
+        giftModeEnabled: _giftMode,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF070B19),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _header(),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(18, 6, 18, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _currentBinding(),
+                          const SizedBox(height: 22),
+                          const _BindingSectionTitle('1. 我的角色'),
+                          const SizedBox(height: 12),
+                          _characterGrid(),
+                          const SizedBox(height: 22),
+                          const _BindingSectionTitle('2. 卡片设置'),
+                          const SizedBox(height: 12),
+                          _giftModeSetting(),
+                          if (_errorMessage != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFFF9BA6))),
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton(
+                  onPressed: _saving || _selectedCollectionId == null ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6434C5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _saving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('确定绑定', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 14, 10),
+      child: Row(
+        children: [
+          IconButton(onPressed: () => Navigator.of(context).pop(false), icon: const Icon(Icons.arrow_back_ios_new_rounded)),
+          const Expanded(child: Text('更换绑定角色', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
+          const Icon(Icons.help_outline_rounded, color: Color(0xFFE5DEFF)),
+        ],
+      ),
+    );
+  }
+
+  Widget _currentBinding() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xCC11162D),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF292F54)),
+      ),
+      child: Row(
+        children: [
+          _BindingCardCover(accent: widget.card.accent, imageUrl: widget.card.coverImageUrl, size: 92),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('当前绑定', style: TextStyle(color: Color(0xFFA9A2C5), fontSize: 13)),
+                const SizedBox(height: 8),
+                Text(
+                  widget.card.hasCharacter ? widget.card.characterName! : '暂未绑定角色',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 9),
+                Text(widget.card.title, style: const TextStyle(color: Color(0xFFC6B2FF), fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _characterGrid() {
+    if (_characters.isEmpty) {
+      return const _AssetEmptyState(icon: Icons.person_add_alt_1_outlined, message: '请先获取或上传角色');
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 0.72,
+      ),
+      itemCount: _characters.length,
+      itemBuilder: (_, index) {
+        final character = _characters[index];
+        final selected = character.collectionId == _selectedCollectionId;
+        return GestureDetector(
+          onTap: () => setState(() => _selectedCollectionId = character.collectionId),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: const Color(0xFF12162D),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: selected ? const Color(0xFF934CFF) : const Color(0xFF343956), width: selected ? 2 : 1),
+              boxShadow: selected ? const [BoxShadow(color: Color(0x665B2CCE), blurRadius: 14)] : null,
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (character.coverImageUrl == null || character.coverImageUrl!.isEmpty)
+                        CustomPaint(painter: AssetCharacterPainter(data: character))
+                      else
+                        Image.network(character.coverImageUrl!, fit: BoxFit.cover),
+                      if (selected)
+                        const Positioned(
+                          top: 6,
+                          right: 6,
+                          child: CircleAvatar(radius: 11, backgroundColor: Color(0xFF7138E2), child: Icon(Icons.check_rounded, size: 15, color: Colors.white)),
+                        ),
+                      if (character.quantity > 1)
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: _CharacterQuantityBadge(quantity: character.quantity),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                  child: Text(character.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _giftModeSetting() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xCC11162D),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: const Color(0xFF292F54)),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('卡片允许进入赠送模式', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                SizedBox(height: 6),
+                Text('开启后，这张卡片可以被赠送给其他人。', style: TextStyle(color: Color(0xFF918BA9), fontSize: 12)),
+              ],
+            ),
+          ),
+          Switch(value: _giftMode, onChanged: (value) => setState(() => _giftMode = value)),
+        ],
+      ),
+    );
+  }
+}
+
+class _BindingSectionTitle extends StatelessWidget {
+  const _BindingSectionTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900));
+}
+
+class _BindingCardCover extends StatelessWidget {
+  const _BindingCardCover({required this.accent, required this.imageUrl, required this.size});
+  final Color accent;
+  final String? imageUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size * 1.18,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [accent.withValues(alpha: 0.85), const Color(0xFF17122B)]),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent),
+        image: imageUrl == null || imageUrl!.isEmpty ? null : DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover),
+      ),
+      child: imageUrl == null || imageUrl!.isEmpty ? const Icon(Icons.star_border_rounded, color: Colors.white, size: 48) : null,
+    );
+  }
+}
+
+class AssetNfcCardData {
+  const AssetNfcCardData({
+    required this.id,
+    required this.title,
+    required this.characterName,
+    required this.rarity,
+    required this.coverImageUrl,
+    required this.giftModeEnabled,
+  });
+
+  factory AssetNfcCardData.fromJson(Map<String, dynamic> json) {
+    return AssetNfcCardData(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      title: json['title']?.toString() ?? 'NFC 卡片',
+      characterName: json['characterName']?.toString(),
+      rarity: json['rarity']?.toString(),
+      coverImageUrl: json['coverImageUrl']?.toString(),
+      giftModeEnabled: json['giftModeEnabled'] == true,
+    );
+  }
+
+  final int id;
+  final String title;
+  final String? characterName;
+  final String? rarity;
+  final String? coverImageUrl;
+  final bool giftModeEnabled;
+
+  bool get hasCharacter => characterName != null && characterName!.isNotEmpty;
+  Color get accent {
+    const colors = [
+      Color(0xFF8E64FF),
+      Color(0xFFFFB45E),
+      Color(0xFFFF906C),
+      Color(0xFF7798FF),
+    ];
+    return colors[id.abs() % colors.length];
+  }
+}
+
+class AssetNfcCardTile extends StatelessWidget {
+  const AssetNfcCardTile({super.key, required this.data, required this.onTap});
+
+  final AssetNfcCardData data;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 118,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xCC11162D),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2D335B)),
+        ),
+        child: Row(
+        children: [
+          Container(
+            width: 78,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [data.accent.withValues(alpha: 0.78), const Color(0xFF16122A)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: data.accent.withValues(alpha: 0.75)),
+              image: data.coverImageUrl == null || data.coverImageUrl!.isEmpty
+                  ? null
+                  : DecorationImage(image: NetworkImage(data.coverImageUrl!), fit: BoxFit.cover),
+            ),
+            child: data.coverImageUrl == null || data.coverImageUrl!.isEmpty
+                ? Icon(Icons.star_border_rounded, color: Colors.white.withValues(alpha: 0.9), size: 46)
+                : null,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.hasCharacter ? '绑定角色' : data.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFFB6B1CD), fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  data.hasCharacter ? data.characterName! : '请绑定角色',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: data.hasCharacter ? Colors.white : const Color(0xFFD9C4FF),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (data.hasCharacter && data.rarity != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    '${data.rarity!} · ${data.giftModeEnabled ? '赠送模式已开启' : '赠送模式未开启'}',
+                    style: TextStyle(color: data.accent, fontSize: 11, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Color(0xFFC9C5DA), size: 28),
+        ],
+        ),
+      ),
+    );
+  }
+}
+
 class AssetSegmentedTabs extends StatelessWidget {
-  const AssetSegmentedTabs({super.key});
+  const AssetSegmentedTabs({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -3112,45 +4030,43 @@ class AssetSegmentedTabs extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFF54389A),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x554F34A6),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Text(
-                '我的角色',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ),
-          const Expanded(
-            child: Center(
-              child: Text(
-                '我的卡片',
-                style: TextStyle(
-                  color: Color(0xFFB8B2CE),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: _AssetTabButton(label: '我的角色', active: selectedIndex == 0, onTap: () => onSelected(0))),
+          Expanded(child: _AssetTabButton(label: '我的卡片', active: selectedIndex == 1, onTap: () => onSelected(1))),
         ],
+      ),
+    );
+  }
+}
+
+class _AssetTabButton extends StatelessWidget {
+  const _AssetTabButton({required this.label, required this.active, required this.onTap});
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF54389A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: active
+              ? const [BoxShadow(color: Color(0x554F34A6), blurRadius: 12, offset: Offset(0, 4))]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8B2CE),
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w800 : FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -3247,6 +4163,27 @@ class AssetCharacterCard extends StatelessWidget {
               ),
             ),
           ),
+          if (data.sourceType == 2)
+            Positioned(
+              top: 7,
+              left: 7,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0xCC563594),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD9B7FF)),
+                ),
+                child: const Icon(Icons.cloud_upload_outlined, color: Colors.white, size: 16),
+              ),
+            ),
+          if (data.quantity > 1)
+            Positioned(
+              top: 7,
+              left: 7,
+              child: _CharacterQuantityBadge(quantity: data.quantity),
+            ),
           if (openingVideo)
             const Positioned.fill(
               child: IgnorePointer(
@@ -3318,6 +4255,9 @@ class AssetCharacterData {
       this.previewVideoObjectKey,
       this.previewVideoUrl,
       int? collectionId,
+      this.sourceType = 1,
+      this.cardResourceId,
+      this.groupedCollectionIds,
     }
   ) : collectionId = collectionId ?? variant;
 
@@ -3333,6 +4273,8 @@ class AssetCharacterData {
       previewVideoObjectKey: json['previewVideoObjectKey']?.toString(),
       previewVideoUrl: json['previewVideoUrl']?.toString(),
       collectionId: (json['collectionId'] as num?)?.toInt() ?? name.hashCode,
+      sourceType: (json['sourceType'] as num?)?.toInt() ?? 1,
+      cardResourceId: (json['cardResourceId'] as num?)?.toInt(),
     );
   }
 
@@ -3344,6 +4286,31 @@ class AssetCharacterData {
   final String? coverImageUrl;
   final String? previewVideoObjectKey;
   final String? previewVideoUrl;
+  final int sourceType;
+  final int? cardResourceId;
+  final List<int>? groupedCollectionIds;
+
+  List<int> get collectionIds => groupedCollectionIds ?? [collectionId];
+  int get quantity => collectionIds.length;
+  String get groupingKey => sourceType == 1 && cardResourceId != null
+      ? 'resource:$cardResourceId'
+      : 'collection:$collectionId';
+
+  AssetCharacterData withCollectionIds(List<int> ids) {
+    return AssetCharacterData(
+      name,
+      series,
+      accent,
+      variant,
+      coverImageUrl: coverImageUrl,
+      previewVideoObjectKey: previewVideoObjectKey,
+      previewVideoUrl: previewVideoUrl,
+      collectionId: collectionId,
+      sourceType: sourceType,
+      cardResourceId: cardResourceId,
+      groupedCollectionIds: List.unmodifiable(ids),
+    );
+  }
 
   static Color _accentForRarity(String rarity) {
     return switch (rarity.toUpperCase()) {
@@ -3352,6 +4319,44 @@ class AssetCharacterData {
       'R' => const Color(0xFF7DB0FF),
       _ => const Color(0xFF9970FF),
     };
+  }
+}
+
+List<AssetCharacterData> _groupAssetCharacters(
+  Iterable<AssetCharacterData> characters,
+) {
+  final grouped = <String, AssetCharacterData>{};
+  final collectionIds = <String, List<int>>{};
+  for (final character in characters) {
+    final key = character.groupingKey;
+    grouped.putIfAbsent(key, () => character);
+    collectionIds.putIfAbsent(key, () => []).add(character.collectionId);
+  }
+  return [
+    for (final entry in grouped.entries)
+      entry.value.withCollectionIds(collectionIds[entry.key]!),
+  ];
+}
+
+class _CharacterQuantityBadge extends StatelessWidget {
+  const _CharacterQuantityBadge({required this.quantity});
+
+  final int quantity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xDD5D32B6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9B7FF)),
+      ),
+      child: Text(
+        'x$quantity',
+        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+      ),
+    );
   }
 }
 
@@ -4175,7 +5180,7 @@ class BottomTabs extends StatelessWidget {
       _TabItem('首页', Icons.home_outlined),
       _TabItem('资产', Icons.widgets_outlined),
       _TabItem('礼物', Icons.card_giftcard_rounded),
-      _TabItem('互动', Icons.favorite_border_rounded),
+      _TabItem('广场', Icons.favorite_border_rounded),
       _TabItem('我的', Icons.person_outline_rounded),
     ];
 

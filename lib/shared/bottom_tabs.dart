@@ -16,7 +16,7 @@ class BottomTabs extends StatelessWidget {
       _TabItem('首页', Icons.home_outlined),
       _TabItem('资产', Icons.widgets_outlined),
       _TabItem('礼物', Icons.card_giftcard_rounded),
-      _TabItem('互动', Icons.favorite_border_rounded),
+      _TabItem('广场', Icons.favorite_border_rounded),
       _TabItem('我的', Icons.person_outline_rounded),
     ];
 

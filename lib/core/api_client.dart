@@ -1,7 +1,7 @@
 ﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 class ApiClient {
-  static const String baseUrl = 'https://www.myguanzhu.com';
+  static const String baseUrl = 'http://192.168.3.60:8080';
 
   Future<Map<String, dynamic>> login({
     required String phone,
@@ -89,6 +89,33 @@ class ApiClient {
     return data
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
+  }
+
+  Future<List<Map<String, dynamic>>> plazaFeaturedBanners() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/plaza/featured-banners'),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '获取广场轮播图失败');
+    }
+    final data = body['data'] as List<dynamic>? ?? const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> plazaCatalog() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/plaza/catalog'),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? '获取全系列图鉴失败');
+    }
+    return body['data'] as Map<String, dynamic>;
   }
 
   Future<String> giftVideoProxyUrl({
