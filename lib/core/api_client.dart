@@ -18,7 +18,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '登录失败');
+      throw Exception(body['message'] ?? 'Login failed');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -31,7 +31,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取用户信息失败');
+      throw Exception(body['message'] ?? 'Failed to get user info');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -51,7 +51,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '修改昵称失败');
+      throw Exception(body['message'] ?? 'Failed to update nickname');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -71,7 +71,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '资产绑定失败');
+      throw Exception(body['message'] ?? 'Failed to bind asset');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -91,7 +91,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '读取 NFC 卡片失败');
+      throw Exception(body['message'] ?? 'Failed to read NFC card');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -104,7 +104,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '领取 NFC 卡片失败');
+      throw Exception(body['message'] ?? 'Failed to claim NFC card');
     }
   }
 
@@ -116,7 +116,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取 NFC 卡片失败');
+      throw Exception(body['message'] ?? 'Failed to load NFC cards');
     }
     final data = body['data'] as List<dynamic>? ?? const [];
     return data.whereType<Map<String, dynamic>>().toList(growable: false);
@@ -142,7 +142,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '绑定 NFC 角色失败');
+      throw Exception(body['message'] ?? 'Failed to bind NFC character');
     }
   }
 
@@ -154,7 +154,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取上传额度失败');
+      throw Exception(body['message'] ?? 'Failed to load upload quota');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -178,9 +178,28 @@ class ApiClient {
     }
 
     final response = await http.Response.fromStream(await request.send());
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeResponse(response, fallbackMessage: 'Upload custom character failed');
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '上传自定义人物失败');
+      throw Exception(body['message'] ?? 'Upload custom character failed');
+    }
+  }
+
+  Map<String, dynamic> _decodeResponse(http.Response response, {required String fallbackMessage}) {
+    final text = utf8.decode(response.bodyBytes, allowMalformed: true).trim();
+    if (text.isEmpty) {
+      throw Exception('$fallbackMessage: empty response (HTTP ${response.statusCode})');
+    }
+    if (text.startsWith('<')) {
+      final lower = text.toLowerCase();
+      final message = lower.contains('413') || lower.contains('request entity too large')
+          ? 'Upload file is too large. Increase Nginx client_max_body_size for the domain proxy.'
+          : '$fallbackMessage: server returned an HTML error page (HTTP ${response.statusCode}). Check /api proxy routing.';
+      throw Exception(message);
+    }
+    try {
+      return jsonDecode(text) as Map<String, dynamic>;
+    } catch (_) {
+      throw Exception('$fallbackMessage: non-JSON response (HTTP ${response.statusCode})');
     }
   }
 
@@ -194,7 +213,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取资产失败');
+      throw Exception(body['message'] ?? 'Failed to load assets');
     }
     final data = body['data'] as List<dynamic>? ?? const [];
     return data
@@ -244,7 +263,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取抽奖次数失败');
+      throw Exception(body['message'] ?? 'Failed to load draw count');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -257,7 +276,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '抽奖失败');
+      throw Exception(body['message'] ?? 'Draw failed');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -273,7 +292,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取媒体地址失败');
+      throw Exception(body['message'] ?? 'Failed to load media url');
     }
     final data = body['data'] as Map<String, dynamic>;
     final path = data['url']?.toString() ?? '';
@@ -288,7 +307,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取广场轮播图失败');
+      throw Exception(body['message'] ?? 'Failed to load plaza banners');
     }
     final data = body['data'] as List<dynamic>? ?? const [];
     return data
@@ -303,7 +322,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取全系列图鉴失败');
+      throw Exception(body['message'] ?? 'Failed to load plaza catalog');
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -319,7 +338,7 @@ class ApiClient {
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? '获取视频地址失败');
+      throw Exception(body['message'] ?? 'Failed to load video url');
     }
     final data = body['data'] as Map<String, dynamic>;
     final path = data['url']?.toString() ?? '';

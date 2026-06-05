@@ -539,16 +539,20 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          const Image(
+            image: AssetImage('assets/images/backages.png'),
+            fit: BoxFit.cover,
+          ),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF0A0920),
-                  Color(0xFF171039),
-                  Color(0xFF160C2F),
-                  Color(0xFF080613),
+                  Color(0xCC0A0920),
+                  Color(0xBB171039),
+                  Color(0xCC160C2F),
+                  Color(0xEE080613),
                 ],
               ),
             ),
