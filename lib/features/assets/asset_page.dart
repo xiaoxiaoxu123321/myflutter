@@ -19,6 +19,14 @@ String _categoryLabel(String category) {
   return category == 'ALL' ? '全部' : category;
 }
 
+String? _jsonString(Object? value) {
+  final text = value?.toString().trim();
+  if (text == null || text.isEmpty || text.toLowerCase() == 'null') {
+    return null;
+  }
+  return text;
+}
+
 class AssetPageBody extends StatefulWidget {
   const AssetPageBody({super.key});
 
@@ -1371,11 +1379,11 @@ class AssetCharacterData {
       rarity,
       _accentForRarity(rarity),
       (json['collectionId'] as num?)?.toInt() ?? name.hashCode,
-      json['coverImageUrl']?.toString(),
-      json['previewVideoObjectKey']?.toString(),
-      json['previewVideoUrl']?.toString(),
-      json['audioObjectKey']?.toString(),
-      json['audioUrl']?.toString(),
+      _jsonString(json['coverImageUrl']),
+      _jsonString(json['previewVideoObjectKey']),
+      _jsonString(json['previewVideoUrl']),
+      _jsonString(json['audioObjectKey']),
+      _jsonString(json['audioUrl']),
       (json['sourceType'] as num?)?.toInt() ?? 1,
     );
   }

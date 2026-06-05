@@ -116,6 +116,15 @@ final class SyncedVideoViewController: UIViewController {
   }
 
   private func configurePlayers() {
+    if audioURL != nil {
+      do {
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback, options: [])
+        try AVAudioSession.sharedInstance().setActive(true)
+      } catch {
+        // Keep video playback available if the audio session cannot be activated.
+      }
+    }
+
     videoStatusObservation = videoPlayer.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       guard let self else { return }
       if item.status == .readyToPlay {
