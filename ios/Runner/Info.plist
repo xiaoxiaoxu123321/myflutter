@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>用于拍摄自定义人物图片和视频，并上传到您的个人资产。</string>
+	<string>Used to capture custom character photos and videos for upload to your personal assets.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用于在拍摄自定义人物视频时录制声音。</string>
+	<string>Used to record custom character voice.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于选择自定义人物图片和视频并上传到个人资产。</string>
+	<string>Used to choose custom character photos and videos for upload to your personal assets.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>用于在使用应用期间获取位置信息，以支持相关设备功能。</string>
+	<string>Used to access location while using the app for related device features.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -35,7 +35,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NFCReaderUsageDescription</key>
-	<string>用于读取 NFC 标签内容并绑定您的资产。</string>
+	<string>Used to read NFC tags and bind your assets.</string>
 	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
 	<array>
 		<string>D2760000850101</string>
