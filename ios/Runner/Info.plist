@@ -8,6 +8,8 @@
 	<string>用于在拍摄自定义人物视频时录制声音。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于选择自定义人物图片和视频并上传到个人资产。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>用于在使用应用期间获取位置信息，以支持相关设备功能。</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

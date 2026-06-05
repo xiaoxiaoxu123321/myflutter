@@ -2,9 +2,11 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:nfc_manager/nfc_manager_ios.dart';
+import 'package:video_player/video_player.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
 import '../login/login_page.dart';
@@ -23,6 +25,8 @@ class HeroPanel extends StatefulWidget {
 }
 
 class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
+  static const _nativeVideoChannel = MethodChannel('dimensional/native_video');
+
   final _apiClient = ApiClient();
   var _flashTrigger = 0;
   var _nfcMessage = '请将卡片贴近';
@@ -337,53 +341,176 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
 
     try {
-      final asset = await _apiClient.bindNfcText(token: token, text: text);
-      final title = asset['title']?.toString() ?? text;
-      final phone = asset['boundUserPhone']?.toString() ?? '';
-      lines.add('资产绑定：$title');
-      if (phone.isNotEmpty) {
-        lines.add('关联用户：$phone');
+      final scan = await _apiClient.scanNfcText(token: token, text: text);
+      if (scan['status'] == 'AVAILABLE') {
+        final asset = await _apiClient.bindNfcText(token: token, text: text);
+        final title = asset['title']?.toString() ?? text;
+        final phone = asset['boundUserPhone']?.toString() ?? '';
+        lines.add('资产绑定：$title');
+        if (phone.isNotEmpty) {
+          lines.add('关联用户：$phone');
+        }
+        return;
       }
+      lines.add('已读取已绑定 NFC 卡片');
+      if (mounted) await _handleScannedNfcCard(scan, token);
     } catch (error) {
-      lines.add('资产绑定失败：${error.toString().replaceFirst('Exception: ', '')}');
+      lines.add('NFC 处理失败：${error.toString().replaceFirst('Exception: ', '')}');
     }
   }
 
-  Future<void> _simulateRead() async {
-    final dataLines = [
-      '读取时间：${_timeText(DateTime.now())}',
-      'Tag ID：04 a2 b3 c4 d5 66 80',
-      'Tech：android.nfc.tech.NfcA, android.nfc.tech.Ndef',
-      'NDEF 类型：org.nfcforum.ndef.type2',
-      '记录数量：1',
-      'Record 1',
-      '  TNF：wellKnown',
-      '  Type：T',
-      '  Payload(text)：123456',
-    ];
-
-    if (AuthSession.isLoggedIn) {
-      await _bindNfcText('123456', dataLines);
+  Future<void> _handleScannedNfcCard(Map<String, dynamic> card, String token) async {
+    final ownedByCurrentUser = card['ownedByCurrentUser'] == true;
+    final giftModeEnabled = card['giftModeEnabled'] == true;
+    if (ownedByCurrentUser || !giftModeEnabled) {
+      await _openNfcCardVideoDialog(card, token);
+      return;
     }
-    if (!mounted) return;
+    await _showGiftCardAcceptDialog(card, token);
+  }
 
-    setState(() {
-      _flashTrigger++;
-      _nfcMessage = '已模拟感应';
-      _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
-      _nfcDataLines = dataLines;
-    });
-    _goLoginIfNeeded(dataLines, '123456');
+  Future<void> _showGiftCardAcceptDialog(Map<String, dynamic> card, String token) async {
+    final imageUrl = card['coverImageUrl']?.toString();
+    final title = _nfcCardTitle(card);
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 260,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AspectRatio(
+                aspectRatio: 0.72,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: imageUrl == null || imageUrl.isEmpty
+                      ? const ColoredBox(
+                          color: Color(0xFF17142A),
+                          child: Icon(Icons.star_border_rounded, size: 70, color: Color(0xFFD9C4FF)),
+                        )
+                      : Image.network(imageUrl, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('该卡片已开启赠送模式，接受后播放视频。', textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('接受')),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    final cardId = (card['cardId'] as num?)?.toInt();
+    if (cardId == null) return;
+    try {
+      await _apiClient.claimNfcCard(token: token, cardId: cardId);
+      if (!mounted) return;
+      await _openNfcCardVideoDialog(card, token);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _openNfcCardVideoDialog(Map<String, dynamic> card, String token) async {
+    final objectKey = card['previewVideoObjectKey']?.toString();
+    final fallbackUrl = card['previewVideoUrl']?.toString();
+    final audioObjectKey = card['audioObjectKey']?.toString();
+    final fallbackAudioUrl = card['audioUrl']?.toString();
+    if ((objectKey == null || objectKey.isEmpty) &&
+        (fallbackUrl == null || fallbackUrl.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无可播放视频')),
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const NfcVideoLoadingDialog(),
+    );
+
+    try {
+      final videoUrl = objectKey != null && objectKey.isNotEmpty
+          ? await _apiClient.giftVideoProxyUrl(token: token, objectKey: objectKey)
+          : (fallbackUrl ?? '');
+      String? audioUrl;
+      if (audioObjectKey != null && audioObjectKey.isNotEmpty) {
+        audioUrl = await _apiClient.giftMediaUrl(token: token, objectKey: audioObjectKey);
+      } else if (fallbackAudioUrl != null && fallbackAudioUrl.isNotEmpty) {
+        audioUrl = fallbackAudioUrl;
+      }
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final opened = await _openNativeVideo(videoUrl, _nfcCardTitle(card), audioUrl: audioUrl);
+      if (opened || !mounted) return;
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('视频播放器打开失败，请稍后重试')),
+        );
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => NfcVideoDialog(
+          title: _nfcCardTitle(card),
+          loadVideoUrl: () async => videoUrl,
+          audioUrl: audioUrl,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Future<bool> _openNativeVideo(String videoUrl, String title, {String? audioUrl}) async {
+    try {
+      final opened = await _nativeVideoChannel.invokeMethod<bool>(
+        'openVideo',
+        {
+          'url': videoUrl,
+          'title': title,
+          if (audioUrl != null && audioUrl.isNotEmpty) 'audioUrl': audioUrl,
+        },
+      );
+      return opened == true;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message ?? '原生播放器打开失败')),
+        );
+      }
+      return false;
+    }
+  }
+
+  String _nfcCardTitle(Map<String, dynamic> card) {
+    final characterName = card['characterName']?.toString();
+    if (characterName != null && characterName.isNotEmpty) return characterName;
+    return card['title']?.toString() ?? 'NFC 卡片';
   }
 
   Future<void> _handleNfcOrbTap() async {
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      if (_nfcSessionStarted || _nfcSessionStarting) return;
-      await _clearIosNfcSession();
-      await _startNfcSession();
-      return;
-    }
-    await _simulateRead();
+    if (_nfcSessionStarted || _nfcSessionStarting) return;
+    await _clearIosNfcSession();
+    await _startNfcSession();
   }
 
   void _goLoginIfNeeded(List<String> nfcDataLines, String? nfcText) {
@@ -452,6 +579,169 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             child: HintText(message: _nfcMessage, subMessage: _nfcSubMessage),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class NfcVideoDialog extends StatefulWidget {
+  const NfcVideoDialog({super.key, required this.title, required this.loadVideoUrl, this.audioUrl});
+
+  final String title;
+  final Future<String> Function() loadVideoUrl;
+  final String? audioUrl;
+
+  @override
+  State<NfcVideoDialog> createState() => _NfcVideoDialogState();
+}
+
+class NfcVideoLoadingDialog extends StatelessWidget {
+  const NfcVideoLoadingDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            LinearProgressIndicator(minHeight: 5),
+            SizedBox(height: 14),
+            Text(
+              '正在加载视频...',
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NfcVideoDialogState extends State<NfcVideoDialog> {
+  VideoPlayerController? _controller;
+  VideoPlayerController? _audioController;
+  var _ready = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVideo();
+  }
+
+  Future<void> _loadVideo() async {
+    try {
+      final videoUrl = await widget.loadVideoUrl();
+      final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      _controller = controller;
+      await controller.initialize();
+      final audioUrl = widget.audioUrl;
+      if (audioUrl != null && audioUrl.isNotEmpty) {
+        await controller.setVolume(0);
+        final audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
+        _audioController = audioController;
+        await audioController.initialize();
+      }
+      await controller.setLooping(true);
+      await _audioController?.setLooping(true);
+      await controller.play();
+      await _audioController?.play();
+      if (!mounted) return;
+      setState(() => _ready = true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = '视频加载失败：${error.toString()}');
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _audioController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+      child: AspectRatio(
+        aspectRatio: 9 / 16,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_errorMessage != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              )
+            else if (_ready && controller != null && controller.value.isInitialized)
+              FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
+                  child: VideoPlayer(controller),
+                ),
+              )
+            else
+              Center(
+                child: Container(
+                  width: 230,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xDD111225),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0x557B5CFF)),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LinearProgressIndicator(minHeight: 5),
+                      SizedBox(height: 12),
+                      Text(
+                        '正在加载视频...',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded),
+                color: Colors.white,
+                tooltip: '关闭',
+              ),
+            ),
+            Positioned(
+              left: 14,
+              right: 54,
+              top: 14,
+              child: Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

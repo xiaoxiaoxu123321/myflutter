@@ -22,14 +22,6 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
   String? _catalogError;
   int? _selectedSeriesId;
 
-  static const _tests = [
-    _PlazaTest('深夜人格测试', '月海系列', Color(0xFF9A73FF), 0.02),
-    _PlazaTest('病娇指数测试', '梦魇系列', Color(0xFFFF5B9A), 0.72),
-    _PlazaTest('元气值测试', '星辰系列', Color(0xFFFF9B6D), 0.35),
-    _PlazaTest('AI人格测试', '静默系列', Color(0xFF80A9FF), 0.54),
-    _PlazaTest('恋爱感知测试', '霓光系列', Color(0xFFFF8FCB), 0.82),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -107,19 +99,6 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
                     const SizedBox(height: 12),
                     _FeaturedBanner(onOpenGift: widget.onOpenGift),
                     const SizedBox(height: 16),
-                    _SectionTitle(title: '心理测试', action: '更多测试 >'),
-                    const SizedBox(height: 9),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: _tests.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, index) => _TestCard(test: _tests[index]),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
                     _SectionTitle(title: '全系列图鉴', action: '全部系列 >'),
                     const SizedBox(height: 8),
                     _FilterBar(
@@ -149,10 +128,6 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
                           character: visibleCharacters[index],
                         ),
                       ),
-                    const SizedBox(height: 18),
-                    _SectionTitle(title: '本周活动', action: '更多活动 >'),
-                    const SizedBox(height: 9),
-                    const _WeeklyActivity(),
                   ]),
                 ),
               ),
@@ -429,39 +404,6 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _TestCard extends StatelessWidget {
-  const _TestCard({required this.test});
-
-  final _PlazaTest test;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      child: Column(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(9),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _CharacterArtwork(alignment: test.alignment, accent: test.accent),
-                  DecoratedBox(decoration: BoxDecoration(border: Border.all(color: test.accent), borderRadius: BorderRadius.circular(9))),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(test.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(test.series, style: TextStyle(color: test.accent, fontSize: 8, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-}
-
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.series,
@@ -580,66 +522,6 @@ class _CatalogMessage extends StatelessWidget {
   }
 }
 
-class _CharacterArtwork extends StatelessWidget {
-  const _CharacterArtwork({required this.alignment, required this.accent});
-
-  final double alignment;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColorFiltered(
-      colorFilter: ColorFilter.mode(accent.withValues(alpha: 0.20), BlendMode.color),
-      child: Image.asset(
-        'assets/images/plaza-hero.png',
-        fit: BoxFit.cover,
-        alignment: Alignment(alignment, 0),
-      ),
-    );
-  }
-}
-
-class _WeeklyActivity extends StatelessWidget {
-  const _WeeklyActivity();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 11, 10, 9),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFF6532AE)),
-        gradient: const LinearGradient(colors: [Color(0xFF251059), Color(0xFF17113A), Color(0xFF28105A)]),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.auto_awesome_rounded, color: Color(0xFFE4B5FF), size: 18),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('分享测试结果 / 送抽奖机会 ×1', style: TextStyle(color: Color(0xFFE5C5FF), fontSize: 12, fontWeight: FontWeight.w900)),
-                SizedBox(height: 7),
-                Text('活动时间：05.25 - 06.07', style: TextStyle(color: Color(0xFF9C94BF), fontSize: 9, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 64,
-            height: 29,
-            child: FilledButton(
-              onPressed: () {},
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF6940CD), padding: EdgeInsets.zero),
-              child: const Text('去参与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PlazaBackgroundPainter extends CustomPainter {
   const _PlazaBackgroundPainter();
 
@@ -656,15 +538,6 @@ class _PlazaBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _PlazaTest {
-  const _PlazaTest(this.title, this.series, this.accent, this.alignment);
-
-  final String title;
-  final String series;
-  final Color accent;
-  final double alignment;
 }
 
 class _PlazaSeries {

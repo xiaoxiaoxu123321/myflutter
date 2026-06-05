@@ -26,6 +26,7 @@ class MainActivity : FlutterActivity() {
                 val intent = Intent(this, NativeVideoActivity::class.java).apply {
                     putExtra(NativeVideoActivity.EXTRA_URL, url)
                     putExtra(NativeVideoActivity.EXTRA_TITLE, call.argument<String>("title") ?: "视频")
+                    putExtra(NativeVideoActivity.EXTRA_AUDIO_URL, call.argument<String>("audioUrl"))
                 }
                 startActivity(intent)
                 result.success(true)

@@ -118,13 +118,25 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     }
   }
 
+  void _logout() {
+    setState(() {
+      AuthSession.isLoggedIn = false;
+      AuthSession.token = null;
+      AuthSession.user = null;
+      _errorMessage = null;
+      _loadingUser = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已退出登录')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthSession.user;
     final isLoggedIn = AuthSession.isLoggedIn && AuthSession.token != null;
     final phone = user?['phone']?.toString();
     final name = user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
-    final level = user?['level']?.toString() ?? '16';
     final idText = phone == null || phone.length < 4
         ? 'ID：100023847'
         : 'ID：${phone.substring(phone.length - 4).padLeft(9, '0')}';
@@ -233,32 +245,6 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                               letterSpacing: 0,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 22,
-                            padding: const EdgeInsets.symmetric(horizontal: 9),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF8D5CFF),
-                              borderRadius: BorderRadius.circular(7),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x668D5CFF),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Lv.$level',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -279,27 +265,44 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const ProfileMenuPanel(
-                  items: [
-                    ProfileMenuItemData(
-                      icon: Icons.article_outlined,
-                      title: '用户协议',
-                    ),
-                    ProfileMenuItemData(
-                      icon: Icons.policy_outlined,
-                      title: '隐私政策',
-                    ),
-                    ProfileMenuItemData(
-                      icon: Icons.settings_outlined,
-                      title: '设置',
-                    ),
-                  ],
-                ),
+                if (isLoggedIn) ...[
+                  const SizedBox(height: 10),
+                  ProfileLogoutButton(onPressed: _logout),
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ProfileLogoutButton extends StatelessWidget {
+  const ProfileLogoutButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.logout_rounded, size: 18),
+        label: const Text('退出登录'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFFFA0A8),
+          side: const BorderSide(color: Color(0x66FFA0A8)),
+          backgroundColor: const Color(0x331F1020),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+          ),
+        ),
       ),
     );
   }

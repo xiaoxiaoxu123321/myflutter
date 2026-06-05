@@ -2,6 +2,7 @@
 import '../../shared/bottom_tabs.dart';
 import '../../shared/track_card.dart';
 import '../assets/asset_page.dart';
+import '../gift/gift_page.dart';
 import '../nfc/hero_panel.dart';
 import '../plaza/plaza_page.dart';
 import '../profile/profile_page.dart';
@@ -40,6 +41,7 @@ class _HomeShellState extends State<HomeShell> {
                   Expanded(
                     child: switch (_selectedIndex) {
                       1 => const AssetPageBody(),
+                      2 => const GiftPageBody(),
                       3 => PlazaPageBody(
                         onOpenGift: () => setState(() => _selectedIndex = 2),
                       ),

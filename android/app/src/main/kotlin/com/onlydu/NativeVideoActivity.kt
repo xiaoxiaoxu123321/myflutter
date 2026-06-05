@@ -18,11 +18,17 @@ class NativeVideoActivity : Activity() {
     companion object {
         const val EXTRA_URL = "video_url"
         const val EXTRA_TITLE = "video_title"
+        const val EXTRA_AUDIO_URL = "audio_url"
     }
 
     private lateinit var videoView: VideoView
     private lateinit var loading: ProgressBar
     private lateinit var errorText: TextView
+    private var videoPlayer: MediaPlayer? = null
+    private var audioPlayer: MediaPlayer? = null
+    private var videoPrepared = false
+    private var audioPrepared = false
+    private var hasExternalAudio = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -52,11 +58,7 @@ class NativeVideoActivity : Activity() {
             )
             setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener {
-                if (isPlaying) {
-                    pause()
-                } else {
-                    start()
-                }
+                togglePlayback()
             }
         }
         loading = ProgressBar(this).apply {
@@ -88,6 +90,8 @@ class NativeVideoActivity : Activity() {
         setContentView(root)
 
         val url = intent.getStringExtra(EXTRA_URL)
+        val audioUrl = intent.getStringExtra(EXTRA_AUDIO_URL)
+        hasExternalAudio = !audioUrl.isNullOrBlank()
         if (url.isNullOrBlank()) {
             showError("Video url is empty")
             return
@@ -95,14 +99,21 @@ class NativeVideoActivity : Activity() {
 
         videoView.setVideoURI(Uri.parse(url))
         videoView.setOnPreparedListener { player: MediaPlayer ->
-            loading.visibility = ProgressBar.GONE
+            videoPlayer = player
+            videoPrepared = true
             player.isLooping = false
+            if (hasExternalAudio) {
+                player.setVolume(0f, 0f)
+            }
             fitVideoToScreen(player.videoWidth, player.videoHeight)
-            videoView.start()
+            startWhenReady()
         }
         videoView.setOnErrorListener { _, what, extra ->
             showError("Video playback failed: what=$what extra=$extra")
             true
+        }
+        if (hasExternalAudio) {
+            prepareExternalAudio(audioUrl!!)
         }
         videoView.requestFocus()
     }
@@ -112,13 +123,58 @@ class NativeVideoActivity : Activity() {
         if (::videoView.isInitialized && videoView.isPlaying) {
             videoView.pause()
         }
+        audioPlayer?.pause()
     }
 
     override fun onDestroy() {
         if (::videoView.isInitialized) {
             videoView.stopPlayback()
         }
+        audioPlayer?.release()
+        audioPlayer = null
         super.onDestroy()
+    }
+
+    private fun prepareExternalAudio(audioUrl: String) {
+        audioPrepared = false
+        audioPlayer = MediaPlayer().apply {
+            setDataSource(this@NativeVideoActivity, Uri.parse(audioUrl))
+            setOnPreparedListener {
+                audioPrepared = true
+                startWhenReady()
+            }
+            setOnErrorListener { _, what, extra ->
+                hasExternalAudio = false
+                videoPlayer?.setVolume(1f, 1f)
+                if (videoPrepared) {
+                    loading.visibility = ProgressBar.GONE
+                    videoView.start()
+                } else {
+                    showError("Audio playback failed: what=$what extra=$extra")
+                }
+                true
+            }
+            prepareAsync()
+        }
+    }
+
+    private fun startWhenReady() {
+        if (!videoPrepared) return
+        if (hasExternalAudio && !audioPrepared) return
+        loading.visibility = ProgressBar.GONE
+        videoView.start()
+        audioPlayer?.start()
+    }
+
+    private fun togglePlayback() {
+        if (videoView.isPlaying) {
+            videoView.pause()
+            audioPlayer?.pause()
+        } else {
+            audioPlayer?.seekTo(videoView.currentPosition)
+            videoView.start()
+            audioPlayer?.start()
+        }
     }
 
     private fun showError(message: String) {
