@@ -93,7 +93,7 @@ final class SyncedVideoViewController: UIViewController {
     playerViewController.didMove(toParent: self)
 
     let closeButton = UIButton(type: .system)
-    closeButton.setTitle("閸忔娊妫?, for: .normal)
+    closeButton.setTitle("Close", for: .normal)
     closeButton.setTitleColor(.white, for: .normal)
     closeButton.backgroundColor = UIColor.black.withAlphaComponent(0.45)
     closeButton.layer.cornerRadius = 16
@@ -153,8 +153,8 @@ final class SyncedVideoViewController: UIViewController {
   }
 
   private func showError(_ message: String) {
-    let alert = UIAlertController(title: "閹绢厽鏂佹径杈Е", message: message, preferredStyle: .alert)
-    alert.addAction(UIAlertAction(title: "閸忔娊妫?, style: .default) { [weak self] _ in
+    let alert = UIAlertController(title: "Playback failed", message: message, preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "Close", style: .default) { [weak self] _ in
       self?.dismiss(animated: true)
     })
     present(alert, animated: true)
