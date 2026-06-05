@@ -12,6 +12,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: const [
@@ -19,7 +20,7 @@ class HomePage extends StatelessWidget {
             image: AssetImage('assets/images/backages.png'),
             fit: BoxFit.cover,
           ),
-          ColoredBox(color: Color(0xAA050611)),
+          ColoredBox(color: Color(0x44050611)),
           SafeArea(child: HomeShell()),
         ],
       ),

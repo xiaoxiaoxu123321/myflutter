@@ -631,7 +631,7 @@ class _AssetVideoPageState extends State<AssetVideoPage> {
                           child: VideoPlayer(_controller),
                         ),
                       )
-                    : const CircularProgressIndicator(),
+                    : const _VideoLoadingPanel(),
           ),
         ),
       ),
@@ -646,6 +646,34 @@ class _AssetVideoPageState extends State<AssetVideoPage> {
   void _playPlayers() {
     _controller.play();
     _audioController?.play();
+  }
+}
+
+class _VideoLoadingPanel extends StatelessWidget {
+  const _VideoLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: const Color(0xDD10101E),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x667B5CFF)),
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(minHeight: 5),
+          SizedBox(height: 12),
+          Text(
+            '正在加载视频...',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
   }
 }
 

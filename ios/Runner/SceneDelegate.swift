@@ -60,6 +60,9 @@ final class SyncedVideoViewController: UIViewController {
   private let audioURL: URL?
   private let videoPlayer: AVPlayer
   private let playerViewController = AVPlayerViewController()
+  private let loadingContainer = UIView()
+  private let loadingProgress = UIProgressView(progressViewStyle: .default)
+  private let loadingLabel = UILabel()
   private var audioPlayer: AVPlayer?
   private var videoReady = false
   private var audioReady = false
@@ -92,6 +95,22 @@ final class SyncedVideoViewController: UIViewController {
     playerViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     playerViewController.didMove(toParent: self)
 
+    loadingContainer.backgroundColor = UIColor.black.withAlphaComponent(0.72)
+    loadingContainer.layer.cornerRadius = 14
+    loadingContainer.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(loadingContainer)
+
+    loadingProgress.progress = 0.18
+    loadingProgress.translatesAutoresizingMaskIntoConstraints = false
+    loadingContainer.addSubview(loadingProgress)
+
+    loadingLabel.text = "Loading video..."
+    loadingLabel.textColor = .white
+    loadingLabel.font = .boldSystemFont(ofSize: 13)
+    loadingLabel.textAlignment = .center
+    loadingLabel.translatesAutoresizingMaskIntoConstraints = false
+    loadingContainer.addSubview(loadingLabel)
+
     let closeButton = UIButton(type: .system)
     closeButton.setTitle("Close", for: .normal)
     closeButton.setTitleColor(.white, for: .normal)
@@ -102,10 +121,21 @@ final class SyncedVideoViewController: UIViewController {
     closeButton.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(closeButton)
     NSLayoutConstraint.activate([
+      loadingContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      loadingContainer.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      loadingContainer.widthAnchor.constraint(equalToConstant: 240),
+      loadingProgress.topAnchor.constraint(equalTo: loadingContainer.topAnchor, constant: 18),
+      loadingProgress.leadingAnchor.constraint(equalTo: loadingContainer.leadingAnchor, constant: 18),
+      loadingProgress.trailingAnchor.constraint(equalTo: loadingContainer.trailingAnchor, constant: -18),
+      loadingLabel.topAnchor.constraint(equalTo: loadingProgress.bottomAnchor, constant: 12),
+      loadingLabel.leadingAnchor.constraint(equalTo: loadingContainer.leadingAnchor, constant: 18),
+      loadingLabel.trailingAnchor.constraint(equalTo: loadingContainer.trailingAnchor, constant: -18),
+      loadingLabel.bottomAnchor.constraint(equalTo: loadingContainer.bottomAnchor, constant: -18),
       closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
       closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
     ])
 
+    startLoadingAnimation()
     configurePlayers()
   }
 
@@ -127,11 +157,13 @@ final class SyncedVideoViewController: UIViewController {
 
     videoStatusObservation = videoPlayer.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
       guard let self else { return }
-      if item.status == .readyToPlay {
-        self.videoReady = true
-        self.startWhenReady()
-      } else if item.status == .failed {
-        self.showError(item.error?.localizedDescription ?? "Video loading failed")
+      DispatchQueue.main.async {
+        if item.status == .readyToPlay {
+          self.videoReady = true
+          self.startWhenReady()
+        } else if item.status == .failed {
+          self.showError(item.error?.localizedDescription ?? "Video loading failed")
+        }
       }
     }
 
@@ -140,14 +172,16 @@ final class SyncedVideoViewController: UIViewController {
       audioPlayer = player
       audioStatusObservation = player.currentItem?.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
         guard let self else { return }
-        if item.status == .readyToPlay {
-          self.audioReady = true
-          self.startWhenReady()
-        } else if item.status == .failed {
-          self.audioPlayer = nil
-          self.audioReady = true
-          self.videoPlayer.isMuted = false
-          self.startWhenReady()
+        DispatchQueue.main.async {
+          if item.status == .readyToPlay {
+            self.audioReady = true
+            self.startWhenReady()
+          } else if item.status == .failed {
+            self.audioPlayer = nil
+            self.audioReady = true
+            self.videoPlayer.isMuted = false
+            self.startWhenReady()
+          }
         }
       }
     } else {
@@ -157,11 +191,13 @@ final class SyncedVideoViewController: UIViewController {
 
   private func startWhenReady() {
     guard videoReady, audioReady else { return }
+    stopLoadingAnimation()
     videoPlayer.play()
     audioPlayer?.play()
   }
 
   private func showError(_ message: String) {
+    stopLoadingAnimation()
     let alert = UIAlertController(title: "Playback failed", message: message, preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: "Close", style: .default) { [weak self] _ in
       self?.dismiss(animated: true)
@@ -171,5 +207,18 @@ final class SyncedVideoViewController: UIViewController {
 
   @objc private func close() {
     dismiss(animated: true)
+  }
+
+  private func startLoadingAnimation() {
+    loadingContainer.isHidden = false
+    loadingProgress.setProgress(0.18, animated: false)
+    UIView.animate(withDuration: 1.2, delay: 0, options: [.repeat, .autoreverse, .allowUserInteraction]) {
+      self.loadingProgress.setProgress(0.92, animated: true)
+    }
+  }
+
+  private func stopLoadingAnimation() {
+    loadingProgress.layer.removeAllAnimations()
+    loadingContainer.isHidden = true
   }
 }

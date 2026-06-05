@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -20,9 +20,9 @@ class _GiftPageBodyState extends State<GiftPageBody> {
   String? _errorMessage;
 
   static const _characters = [
-    GiftCharacterData('月海型 · 缪', '限定', Color(0xFF8E62FF), 0),
+    GiftCharacterData('月海型 · 缇', '限定', Color(0xFF8E62FF), 0),
     GiftCharacterData('狐影型 · 光', '限定', Color(0xFFFF8A73), 1),
-    GiftCharacterData('梦魇型 · 璃夜', '隐藏款', Color(0xFFFF5E93), 2),
+    GiftCharacterData('梦魇型 · 琉璃', '隐藏款', Color(0xFFFF5E93), 2),
   ];
 
   @override
@@ -151,7 +151,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '开盲盒 ✨',
+                            '开启盲盒',
                             style: TextStyle(
                               color: Color(0xFFE9C4FF),
                               fontSize: 20,
@@ -167,7 +167,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                           ),
                           SizedBox(height: 1),
                           Text(
-                            '遇见你的专属人格',
+                            '閬囪浣犵殑涓撳睘浜烘牸',
                             style: TextStyle(
                               color: Color(0xFFEDE5FF),
                               fontSize: 11,
@@ -224,7 +224,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                         letterSpacing: 0,
                       ),
                     ),
-                    child: const Text('立即开盲盒'),
+                    child: const Text('绔嬪嵆寮€鐩茬洅'),
                   ),
                 ),
               ],
@@ -422,7 +422,7 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
                           child: Column(
                             children: [
                               Text(
-                                _revealed ? '抽中了！' : '抽奖中...',
+                                _revealed ? '鎶戒腑浜嗭紒' : '鎶藉涓?..',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -433,7 +433,7 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
                               const SizedBox(height: 6),
                               Text(
                                 _revealed
-                                    ? '${widget.result.rarity} · ${widget.result.name}'
+                                    ? '${widget.result.rarity} 路 ${widget.result.name}'
                                     : '正在为你匹配最适合的人格',
                                 style: const TextStyle(
                                   color: Color(0xFFDCCFFF),
@@ -598,7 +598,7 @@ class _GiftVideoPageState extends State<GiftVideoPage> {
         _controller.play();
       }).catchError((error) {
         if (!mounted) return;
-        setState(() => _errorMessage = '视频加载失败：${error.toString()}');
+        setState(() => _errorMessage = '视频加载失败：$error');
       });
   }
 
@@ -641,9 +641,37 @@ class _GiftVideoPageState extends State<GiftVideoPage> {
                           child: VideoPlayer(_controller),
                         ),
                       )
-                    : const CircularProgressIndicator(),
+                    : const _GiftVideoLoadingPanel(),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GiftVideoLoadingPanel extends StatelessWidget {
+  const _GiftVideoLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: const Color(0xDD10101E),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x667B5CFF)),
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(minHeight: 5),
+          SizedBox(height: 12),
+          Text(
+            '正在加载视频...',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }
@@ -814,7 +842,7 @@ class GiftDrawCountCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Text(
-                    errorMessage ?? '首次下载奖励 x 1',
+                    errorMessage ?? '首次登录奖励 x 1',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -867,7 +895,7 @@ class GiftSectionHeader extends StatelessWidget {
         ),
         Spacer(),
         Text(
-          '概率 UP ✨',
+          '概率 UP',
           style: TextStyle(
             color: Color(0xFFFFC46A),
             fontSize: 12,

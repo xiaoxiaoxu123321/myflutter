@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.VideoView
@@ -22,7 +23,7 @@ class NativeVideoActivity : Activity() {
     }
 
     private lateinit var videoView: VideoView
-    private lateinit var loading: ProgressBar
+    private lateinit var loading: LinearLayout
     private lateinit var errorText: TextView
     private var videoPlayer: MediaPlayer? = null
     private var audioPlayer: MediaPlayer? = null
@@ -61,12 +62,36 @@ class NativeVideoActivity : Activity() {
                 togglePlayback()
             }
         }
-        loading = ProgressBar(this).apply {
+        loading = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(42, 34, 42, 36)
+            setBackgroundColor(0xDD10101E.toInt())
             layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                560,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER
             )
+            addView(ProgressBar(this@NativeVideoActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                isIndeterminate = true
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    12
+                )
+            })
+            addView(TextView(this@NativeVideoActivity).apply {
+                text = "正在加载视频..."
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 13f
+                gravity = Gravity.CENTER
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = 22
+                }
+            })
         }
         errorText = TextView(this).apply {
             setTextColor(0xFFFFFFFF.toInt())
@@ -147,7 +172,7 @@ class NativeVideoActivity : Activity() {
                 hasExternalAudio = false
                 videoPlayer?.setVolume(1f, 1f)
                 if (videoPrepared) {
-                    loading.visibility = ProgressBar.GONE
+                    loading.visibility = LinearLayout.GONE
                     videoView.start()
                 } else {
                     showError("Audio playback failed: what=$what extra=$extra")
@@ -161,7 +186,7 @@ class NativeVideoActivity : Activity() {
     private fun startWhenReady() {
         if (!videoPrepared) return
         if (hasExternalAudio && !audioPrepared) return
-        loading.visibility = ProgressBar.GONE
+        loading.visibility = LinearLayout.GONE
         videoView.start()
         audioPlayer?.start()
     }
@@ -178,7 +203,7 @@ class NativeVideoActivity : Activity() {
     }
 
     private fun showError(message: String) {
-        loading.visibility = ProgressBar.GONE
+        loading.visibility = LinearLayout.GONE
         errorText.text = message
         errorText.visibility = TextView.VISIBLE
     }
