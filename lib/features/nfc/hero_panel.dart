@@ -642,10 +642,13 @@ class _NfcVideoDialogState extends State<NfcVideoDialog> {
       }
       await controller.setLooping(true);
       await _audioController?.setLooping(true);
-      await controller.play();
-      await _audioController?.play();
       if (!mounted) return;
       setState(() => _ready = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        controller.play();
+        _audioController?.play();
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = '视频加载失败：${error.toString()}');

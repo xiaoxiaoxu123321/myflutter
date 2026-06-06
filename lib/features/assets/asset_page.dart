@@ -586,8 +586,10 @@ class _AssetVideoPageState extends State<AssetVideoPage> {
 
       if (!mounted) return;
       setState(() => _ready = true);
-      await _controller.play();
-      await _audioController?.play();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _playPlayers();
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = '视频加载失败：${error.toString()}');
