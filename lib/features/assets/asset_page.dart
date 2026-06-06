@@ -1811,7 +1811,10 @@ class _AssetNfcCardManagePageState extends State<AssetNfcCardManagePage> {
               const SizedBox(height: 18),
               Row(
                 children: [
-                  _NfcCardCover(data: widget.card, size: 70),
+                  _NfcBindingCover(
+                    imageUrl: selected?.coverImageUrl ?? widget.card.coverImageUrl,
+                    size: 70,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -1962,10 +1965,10 @@ class _NfcPageHeader extends StatelessWidget {
   }
 }
 
-class _NfcCardCover extends StatelessWidget {
-  const _NfcCardCover({required this.data, required this.size});
+class _NfcBindingCover extends StatelessWidget {
+  const _NfcBindingCover({required this.imageUrl, required this.size});
 
-  final AssetNfcCardData data;
+  final String? imageUrl;
   final double size;
 
   @override
@@ -1975,12 +1978,12 @@ class _NfcCardCover extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: data.coverImageUrl == null || data.coverImageUrl!.isEmpty
+        child: imageUrl == null || imageUrl!.isEmpty
             ? const ColoredBox(
                 color: Color(0xFF21183E),
                 child: Icon(Icons.star_border_rounded, color: Color(0xFFE7B3FF), size: 42),
               )
-            : Image.network(data.coverImageUrl!, fit: BoxFit.cover),
+            : Image.network(imageUrl!, fit: BoxFit.cover),
       ),
     );
   }

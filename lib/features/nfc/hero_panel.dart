@@ -432,6 +432,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       return;
     }
 
+    var loadingVisible = true;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -449,32 +450,64 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         audioUrl = fallbackAudioUrl;
       }
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
 
-      final opened = await _openNativeVideo(videoUrl, _nfcCardTitle(card), audioUrl: audioUrl);
-      if (opened || !mounted) return;
       if (defaultTargetPlatform == TargetPlatform.android) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingVisible = false;
+        final opened = await _openNativeVideo(videoUrl, _nfcCardTitle(card), audioUrl: audioUrl);
+        if (opened || !mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('视频播放器打开失败，请稍后重试')),
         );
         return;
       }
 
+      final prepared = await _prepareNfcVideo(videoUrl: videoUrl, audioUrl: audioUrl);
+      if (!mounted) {
+        prepared.dispose();
+        return;
+      }
+      Navigator.of(context, rootNavigator: true).pop();
+      loadingVisible = false;
+
       await showDialog<void>(
         context: context,
         barrierDismissible: true,
         builder: (_) => NfcVideoDialog(
           title: _nfcCardTitle(card),
-          loadVideoUrl: () async => videoUrl,
-          audioUrl: audioUrl,
+          prepared: prepared,
         ),
       );
     } catch (error) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      if (loadingVisible) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
       );
+    }
+  }
+
+  Future<_PreparedNfcVideo> _prepareNfcVideo({required String videoUrl, String? audioUrl}) async {
+    final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+    VideoPlayerController? audioController;
+    try {
+      await controller.initialize();
+      if (audioUrl != null && audioUrl.isNotEmpty) {
+        await controller.setVolume(0);
+        audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
+        await audioController.initialize();
+      } else {
+        await controller.setVolume(1);
+      }
+      await controller.setLooping(true);
+      await audioController?.setLooping(true);
+      return _PreparedNfcVideo(video: controller, audio: audioController);
+    } catch (_) {
+      await controller.dispose();
+      await audioController?.dispose();
+      rethrow;
     }
   }
 
@@ -576,12 +609,23 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   }
 }
 
+class _PreparedNfcVideo {
+  const _PreparedNfcVideo({required this.video, this.audio});
+
+  final VideoPlayerController video;
+  final VideoPlayerController? audio;
+
+  void dispose() {
+    video.dispose();
+    audio?.dispose();
+  }
+}
+
 class NfcVideoDialog extends StatefulWidget {
-  const NfcVideoDialog({super.key, required this.title, required this.loadVideoUrl, this.audioUrl});
+  const NfcVideoDialog({super.key, required this.title, required this.prepared});
 
   final String title;
-  final Future<String> Function() loadVideoUrl;
-  final String? audioUrl;
+  final _PreparedNfcVideo prepared;
 
   @override
   State<NfcVideoDialog> createState() => _NfcVideoDialogState();
@@ -614,57 +658,29 @@ class NfcVideoLoadingDialog extends StatelessWidget {
 }
 
 class _NfcVideoDialogState extends State<NfcVideoDialog> {
-  VideoPlayerController? _controller;
+  late final VideoPlayerController _controller;
   VideoPlayerController? _audioController;
-  var _ready = false;
-  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadVideo();
-  }
-
-  Future<void> _loadVideo() async {
-    try {
-      final videoUrl = await widget.loadVideoUrl();
-      final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
-      _controller = controller;
-      await controller.initialize();
-      final audioUrl = widget.audioUrl;
-      if (audioUrl != null && audioUrl.isNotEmpty) {
-        await controller.setVolume(0);
-        final audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
-        _audioController = audioController;
-        await audioController.initialize();
-      } else {
-        await controller.setVolume(1);
-      }
-      await controller.setLooping(true);
-      await _audioController?.setLooping(true);
+    _controller = widget.prepared.video;
+    _audioController = widget.prepared.audio;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() => _ready = true);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        controller.play();
-        _audioController?.play();
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _errorMessage = '视频加载失败：${error.toString()}');
-    }
+      _controller.play();
+      _audioController?.play();
+    });
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
-    _audioController?.dispose();
+    widget.prepared.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
     return Dialog(
       backgroundColor: Colors.black,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
@@ -673,49 +689,14 @@ class _NfcVideoDialogState extends State<NfcVideoDialog> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_errorMessage != null)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    _errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              )
-            else if (_ready && controller != null && controller.value.isInitialized)
-              FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: controller.value.size.width,
-                  height: controller.value.size.height,
-                  child: VideoPlayer(controller),
-                ),
-              )
-            else
-              Center(
-                child: Container(
-                  width: 230,
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xDD111225),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0x557B5CFF)),
-                  ),
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      LinearProgressIndicator(minHeight: 5),
-                      SizedBox(height: 12),
-                      Text(
-                        '正在加载视频...',
-                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                ),
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
               ),
+            ),
             Positioned(
               top: 8,
               right: 8,
