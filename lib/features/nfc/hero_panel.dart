@@ -503,11 +503,30 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
       }
       await controller.setLooping(true);
       await audioController?.setLooping(true);
+      await controller.play();
+      await audioController?.play();
+      await _waitForVideoPlaybackStart(controller);
       return _PreparedNfcVideo(video: controller, audio: audioController);
     } catch (_) {
       await controller.dispose();
       await audioController?.dispose();
       rethrow;
+    }
+  }
+
+  Future<void> _waitForVideoPlaybackStart(VideoPlayerController controller) async {
+    const timeout = Duration(seconds: 12);
+    const interval = Duration(milliseconds: 120);
+    final startedAt = DateTime.now();
+    while (DateTime.now().difference(startedAt) < timeout) {
+      final value = controller.value;
+      if (value.hasError) {
+        throw Exception(value.errorDescription ?? '视频加载失败');
+      }
+      if (value.isPlaying && !value.isBuffering) {
+        return;
+      }
+      await Future<void>.delayed(interval);
     }
   }
 
@@ -668,7 +687,9 @@ class _NfcVideoDialogState extends State<NfcVideoDialog> {
     _audioController = widget.prepared.audio;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _controller.play();
+      if (!_controller.value.isPlaying) {
+        _controller.play();
+      }
       _audioController?.play();
     });
   }
