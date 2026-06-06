@@ -184,6 +184,58 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> uploadCustomCharacterMedia({
+    required String token,
+    required XFile file,
+    required String mediaType,
+  }) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/custom-characters/media'))
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields['mediaType'] = mediaType
+      ..files.add(await _multipartFile('file', file));
+
+    final response = await http.Response.fromStream(await request.send());
+    final body = _decodeResponse(response, fallbackMessage: 'Upload custom character media failed');
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Upload custom character media failed');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> saveCustomCharacter({
+    required String token,
+    required Map<String, String> fields,
+    required Map<String, dynamic> image,
+    Map<String, dynamic>? video,
+    Map<String, dynamic>? audio,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/custom-characters/save'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        ...fields,
+        'imageUrl': image['url']?.toString() ?? '',
+        'imageObjectKey': image['objectKey']?.toString() ?? '',
+        if (video != null) ...{
+          'videoUrl': video['url']?.toString() ?? '',
+          'videoObjectKey': video['objectKey']?.toString() ?? '',
+        },
+        if (audio != null) ...{
+          'audioUrl': audio['url']?.toString() ?? '',
+          'audioObjectKey': audio['objectKey']?.toString() ?? '',
+        },
+      }),
+    );
+
+    final body = _decodeResponse(response, fallbackMessage: 'Save custom character failed');
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Save custom character failed');
+    }
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response, {required String fallbackMessage}) {
     final text = utf8.decode(response.bodyBytes, allowMalformed: true).trim();
     if (text.isEmpty) {

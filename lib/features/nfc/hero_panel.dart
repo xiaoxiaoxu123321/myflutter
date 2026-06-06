@@ -125,6 +125,10 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           }
           final dataLines = [...readResult.lines];
           dataLines.addAll(_nfcTrace);
+          if (defaultTargetPlatform == TargetPlatform.iOS) {
+            _iosTagReadCompleted = true;
+            await _clearIosNfcSession(alertMessageIos: '读取成功');
+          }
           if (AuthSession.isLoggedIn && readResult.text != null) {
             await _bindNfcText(readResult.text!, dataLines);
           }
@@ -136,10 +140,6 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
             _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
             _nfcDataLines = dataLines;
           });
-          if (defaultTargetPlatform == TargetPlatform.iOS) {
-            _iosTagReadCompleted = true;
-            await _clearIosNfcSession(alertMessageIos: '读取成功');
-          }
           _goLoginIfNeeded(dataLines, readResult.text);
         },
         onSessionErrorIos: (error) {
@@ -556,14 +556,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           const CustomPaint(painter: StarfieldPainter()),
           const Positioned.fill(child: CharacterArt()),
           const Positioned.fill(child: VignetteLayer()),
-          const Positioned(top: 10, left: 12, right: 12, child: TopBar()),
           const Positioned(top: 56, left: 0, right: 0, child: TitleBlock()),
-          Positioned(
-            left: 18,
-            right: 18,
-            top: 122,
-            child: NfcDataPanel(lines: _nfcDataLines),
-          ),
           Positioned(
             left: 0,
             right: 0,
@@ -747,47 +740,6 @@ class _NfcVideoDialogState extends State<NfcVideoDialog> {
   }
 }
 
-class TopBar extends StatelessWidget {
-  const TopBar({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _IconBadge(icon: Icons.home_rounded),
-        const Spacer(),
-        _SignalBar(width: 4, height: 7),
-        const SizedBox(width: 3),
-        _SignalBar(width: 4, height: 10),
-        const SizedBox(width: 3),
-        _SignalBar(width: 4, height: 13),
-        const SizedBox(width: 8),
-        const Icon(Icons.wifi_rounded, size: 16, color: Colors.white),
-        const SizedBox(width: 8),
-        Container(
-          width: 22,
-          height: 11,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white, width: 1.2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 15,
-              margin: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class TitleBlock extends StatelessWidget {
   const TitleBlock({super.key});
 
@@ -816,66 +768,6 @@ class TitleBlock extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class NfcDataPanel extends StatelessWidget {
-  const NfcDataPanel({super.key, required this.lines});
-
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 132,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xCC120F24),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x886F55AD)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x88000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.nfc_rounded, color: Color(0xFFE5B8FF), size: 17),
-              SizedBox(width: 6),
-              Text(
-                'NFC读取结果',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 7),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Text(
-                lines.join('\n'),
-                style: const TextStyle(
-                  color: Color(0xFFE8DFFF),
-                  fontSize: 10.5,
-                  height: 1.25,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1397,47 +1289,6 @@ class VignetteLayer extends StatelessWidget {
             Colors.black.withValues(alpha: 0.88),
           ],
           stops: const [0, 0.36, 0.72, 1],
-        ),
-      ),
-    );
-  }
-}
-
-class _IconBadge extends StatelessWidget {
-  const _IconBadge({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: Colors.white, size: 17),
-    );
-  }
-}
-
-class _SignalBar extends StatelessWidget {
-  const _SignalBar({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(4),
         ),
       ),
     );

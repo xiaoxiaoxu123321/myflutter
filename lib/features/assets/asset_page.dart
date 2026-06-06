@@ -413,8 +413,9 @@ class _AssetPageBodyState extends State<AssetPageBody> {
     final token = AuthSession.token;
     final objectKey = character.previewVideoObjectKey;
     final fallbackUrl = character.previewVideoUrl;
-    final audioObjectKey = character.audioObjectKey;
-    final fallbackAudioUrl = character.audioUrl;
+    final isCustomCharacter = character.sourceType == 2;
+    final audioObjectKey = isCustomCharacter ? character.audioObjectKey : null;
+    final fallbackAudioUrl = isCustomCharacter ? character.audioUrl : null;
     if (token == null || token.isEmpty) {
       _showMessage('请先登录后播放视频');
       return;
@@ -707,16 +708,26 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
   XFile? _image;
   XFile? _video;
   XFile? _audio;
+  Map<String, dynamic>? _uploadedImage;
+  Map<String, dynamic>? _uploadedVideo;
+  Map<String, dynamic>? _uploadedAudio;
   String? _recordingAudioPath;
   Timer? _recordingTimer;
   Duration _recordingElapsed = Duration.zero;
   Duration _recordedAudioDuration = Duration.zero;
   var _recordingAudio = false;
+  var _uploadingImage = false;
+  var _uploadingVideo = false;
+  var _uploadingAudio = false;
   var _saving = false;
   String? _errorMessage;
 
+  bool get _uploadingMedia => _uploadingImage || _uploadingVideo || _uploadingAudio;
+
   String get _audioSubtitle {
     if (_recordingAudio) return '录音中 ${_formatDuration(_recordingElapsed)}，再次点击停止';
+    if (_uploadingAudio) return '语音上传中...';
+    if (_uploadedAudio != null) return '语音已上传 ${_formatDuration(_recordedAudioDuration)}';
     final audio = _audio;
     if (audio != null) return '已录制语音 ${_formatDuration(_recordedAudioDuration)}';
     return '点击开始录音，可选';
@@ -764,7 +775,9 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
                     _fileTile(
                       icon: Icons.video_library_outlined,
                       title: '人物视频',
-                      subtitle: _video?.name ?? '可选，支持 MP4 / MOV / WEBM',
+                      subtitle: _uploadingVideo
+                          ? '视频上传中...'
+                          : (_uploadedVideo != null ? '视频已上传' : (_video?.name ?? '可选，支持 MP4 / MOV / WEBM')),
                       onTap: _pickVideo,
                     ),
                     const SizedBox(height: 10),
@@ -796,14 +809,17 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
                       width: double.infinity,
                       height: 52,
                       child: FilledButton(
-                        onPressed: _saving ? null : _save,
+                        onPressed: (_saving || _uploadingMedia) ? null : _save,
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF6434C5),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         child: _saving
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('保存', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            : Text(
+                                _uploadingMedia ? '媒体上传中' : '保存',
+                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                              ),
                       ),
                     ),
                   ],
@@ -937,12 +953,64 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
 
   Future<void> _pickImage() async {
     final image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null && mounted) setState(() => _image = image);
+    if (image == null || !mounted) return;
+    setState(() {
+      _image = image;
+      _uploadedImage = null;
+      _uploadingImage = true;
+      _errorMessage = null;
+    });
+    try {
+      final uploaded = await _apiClient.uploadCustomCharacterMedia(
+        token: widget.token,
+        file: image,
+        mediaType: 'IMAGE',
+      );
+      if (!mounted) return;
+      setState(() {
+        _uploadedImage = uploaded;
+        _uploadingImage = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _image = null;
+        _uploadedImage = null;
+        _uploadingImage = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   Future<void> _pickVideo() async {
     final video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null && mounted) setState(() => _video = video);
+    if (video == null || !mounted) return;
+    setState(() {
+      _video = video;
+      _uploadedVideo = null;
+      _uploadingVideo = true;
+      _errorMessage = null;
+    });
+    try {
+      final uploaded = await _apiClient.uploadCustomCharacterMedia(
+        token: widget.token,
+        file: video,
+        mediaType: 'VIDEO',
+      );
+      if (!mounted) return;
+      setState(() {
+        _uploadedVideo = uploaded;
+        _uploadingVideo = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _video = null;
+        _uploadedVideo = null;
+        _uploadingVideo = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
   }
 
   Future<void> _toggleAudioRecording() async {
@@ -1017,7 +1085,9 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
           mimeType: 'audio/wav',
           name: audioPath.split(Platform.pathSeparator).last,
         );
+        _uploadedAudio = null;
       });
+      await _uploadRecordedAudio();
     } catch (error) {
       _recordingTimer?.cancel();
       if (!mounted) return;
@@ -1030,10 +1100,39 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
     }
   }
 
+  Future<void> _uploadRecordedAudio() async {
+    final audio = _audio;
+    if (audio == null) return;
+    setState(() {
+      _uploadingAudio = true;
+      _errorMessage = null;
+    });
+    try {
+      final uploaded = await _apiClient.uploadCustomCharacterMedia(
+        token: widget.token,
+        file: audio,
+        mediaType: 'AUDIO',
+      );
+      if (!mounted) return;
+      setState(() {
+        _uploadedAudio = uploaded;
+        _uploadingAudio = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _audio = null;
+        _uploadedAudio = null;
+        _uploadingAudio = false;
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
   Future<void> _save() async {
     final name = _controllers['name']!.text.trim();
-    if (name.isEmpty || _image == null) {
-      setState(() => _errorMessage = '请填写人物名称并选择图片');
+    if (name.isEmpty || _uploadedImage == null) {
+      setState(() => _errorMessage = _uploadingImage ? '人物图片还在上传中' : '请填写人物名称并选择图片');
       return;
     }
     if (_recordingAudio) {
@@ -1044,12 +1143,12 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       _errorMessage = null;
     });
     try {
-      await _apiClient.uploadCustomCharacter(
+      await _apiClient.saveCustomCharacter(
         token: widget.token,
         fields: {for (final entry in _controllers.entries) entry.key: entry.value.text.trim()},
-        image: _image!,
-        video: _video,
-        audio: _audio,
+        image: _uploadedImage!,
+        video: _uploadedVideo,
+        audio: _uploadedAudio,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {

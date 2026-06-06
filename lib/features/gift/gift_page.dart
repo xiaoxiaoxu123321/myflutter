@@ -167,7 +167,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                           ),
                           SizedBox(height: 1),
                           Text(
-                            '閬囪浣犵殑涓撳睘浜烘牸',
+                            '遇见你的专属人格',
                             style: TextStyle(
                               color: Color(0xFFEDE5FF),
                               fontSize: 11,
@@ -224,7 +224,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                         letterSpacing: 0,
                       ),
                     ),
-                    child: const Text('绔嬪嵆寮€鐩茬洅'),
+                    child: const Text('立即开启盲盒'),
                   ),
                 ),
               ],
@@ -422,7 +422,7 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
                           child: Column(
                             children: [
                               Text(
-                                _revealed ? '鎶戒腑浜嗭紒' : '鎶藉涓?..',
+                                _revealed ? '抽中了！' : '抽奖中...',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -433,7 +433,7 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
                               const SizedBox(height: 6),
                               Text(
                                 _revealed
-                                    ? '${widget.result.rarity} 路 ${widget.result.name}'
+                                    ? '${widget.result.rarity} · ${widget.result.name}'
                                     : '正在为你匹配最适合的人格',
                                 style: const TextStyle(
                                   color: Color(0xFFDCCFFF),
