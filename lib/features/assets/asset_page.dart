@@ -1135,6 +1135,10 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       setState(() => _errorMessage = _uploadingImage ? '人物图片还在上传中' : '请填写人物名称并选择图片');
       return;
     }
+    if (_video != null && _uploadedVideo == null) {
+      setState(() => _errorMessage = _uploadingVideo ? '人物视频还在上传中' : '人物视频上传失败，请重新选择视频');
+      return;
+    }
     if (_recordingAudio) {
       await _stopAudioRecording();
     }
