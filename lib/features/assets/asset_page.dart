@@ -992,6 +992,28 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       _errorMessage = null;
     });
     try {
+      await _uploadSelectedVideo();
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _uploadedVideo = null;
+        _uploadingVideo = false;
+        _errorMessage = '人物视频上传失败，保存时会重试：$message';
+      });
+    }
+  }
+
+  Future<void> _uploadSelectedVideo() async {
+    final video = _video;
+    if (video == null) return;
+    if (mounted) {
+      setState(() {
+        _uploadingVideo = true;
+        _errorMessage = null;
+      });
+    }
+    try {
       final uploaded = await _apiClient.uploadCustomCharacterMedia(
         token: widget.token,
         file: video,
@@ -1002,14 +1024,11 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
         _uploadedVideo = uploaded;
         _uploadingVideo = false;
       });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _video = null;
-        _uploadedVideo = null;
-        _uploadingVideo = false;
-        _errorMessage = error.toString().replaceFirst('Exception: ', '');
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _uploadingVideo = false);
+      }
+      rethrow;
     }
   }
 
@@ -1135,10 +1154,6 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       setState(() => _errorMessage = _uploadingImage ? '人物图片还在上传中' : '请填写人物名称并选择图片');
       return;
     }
-    if (_video != null && _uploadedVideo == null) {
-      setState(() => _errorMessage = _uploadingVideo ? '人物视频还在上传中' : '人物视频上传失败，请重新选择视频');
-      return;
-    }
     if (_recordingAudio) {
       await _stopAudioRecording();
     }
@@ -1147,6 +1162,12 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       _errorMessage = null;
     });
     try {
+      if (_video != null && _uploadedVideo == null) {
+        await _uploadSelectedVideo();
+      }
+      if (_video != null && _uploadedVideo == null) {
+        throw Exception('人物视频上传失败，请重新选择视频');
+      }
       await _apiClient.saveCustomCharacter(
         token: widget.token,
         fields: {for (final entry in _controllers.entries) entry.key: entry.value.text.trim()},

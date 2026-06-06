@@ -199,7 +199,13 @@ class ApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Upload custom character media failed');
     }
-    return body['data'] as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>;
+    final url = data['url']?.toString() ?? '';
+    final objectKey = data['objectKey']?.toString() ?? '';
+    if (url.isEmpty || objectKey.isEmpty) {
+      throw Exception('Upload custom character media failed: missing media url');
+    }
+    return data;
   }
 
   Future<void> saveCustomCharacter({
