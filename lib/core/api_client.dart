@@ -159,31 +159,6 @@ class ApiClient {
     return body['data'] as Map<String, dynamic>;
   }
 
-  Future<void> uploadCustomCharacter({
-    required String token,
-    required Map<String, String> fields,
-    required XFile image,
-    XFile? video,
-    XFile? audio,
-  }) async {
-    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/custom-characters'))
-      ..headers['Authorization'] = 'Bearer $token'
-      ..fields.addAll(fields)
-      ..files.add(await _multipartFile('image', image));
-    if (video != null) {
-      request.files.add(await _multipartFile('video', video));
-    }
-    if (audio != null) {
-      request.files.add(await _multipartFile('audio', audio));
-    }
-
-    final response = await http.Response.fromStream(await request.send());
-    final body = _decodeResponse(response, fallbackMessage: 'Upload custom character failed');
-    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? 'Upload custom character failed');
-    }
-  }
-
   Future<Map<String, dynamic>> uploadCustomCharacterMedia({
     required String token,
     required XFile file,

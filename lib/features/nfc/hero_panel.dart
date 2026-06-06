@@ -637,6 +637,8 @@ class _NfcVideoDialogState extends State<NfcVideoDialog> {
         final audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
         _audioController = audioController;
         await audioController.initialize();
+      } else {
+        await controller.setVolume(1);
       }
       await controller.setLooping(true);
       await _audioController?.setLooping(true);

@@ -129,6 +129,8 @@ class NativeVideoActivity : Activity() {
             player.isLooping = false
             if (hasExternalAudio) {
                 player.setVolume(0f, 0f)
+            } else {
+                player.setVolume(1f, 1f)
             }
             fitVideoToScreen(player.videoWidth, player.videoHeight)
             startWhenReady()

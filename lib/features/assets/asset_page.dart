@@ -580,6 +580,8 @@ class _AssetVideoPageState extends State<AssetVideoPage> {
         final audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
         _audioController = audioController;
         await audioController.initialize();
+      } else {
+        await _controller.setVolume(1);
       }
 
       if (!mounted) return;
@@ -999,7 +1001,7 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       setState(() {
         _uploadedVideo = null;
         _uploadingVideo = false;
-        _errorMessage = '人物视频上传失败，保存时会重试：$message';
+        _errorMessage = '人物视频上传失败，请重新选择视频：$message';
       });
     }
   }
@@ -1155,19 +1157,22 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
       return;
     }
     if (_recordingAudio) {
-      await _stopAudioRecording();
+      setState(() => _errorMessage = '请先停止录音，等待语音上传完成后再保存');
+      return;
+    }
+    if (_video != null && _uploadedVideo == null) {
+      setState(() => _errorMessage = _uploadingVideo ? '人物视频还在上传中' : '人物视频上传失败，请重新选择视频');
+      return;
+    }
+    if (_audio != null && _uploadedAudio == null) {
+      setState(() => _errorMessage = _uploadingAudio ? '人物语音还在上传中' : '人物语音上传失败，请重新录制');
+      return;
     }
     setState(() {
       _saving = true;
       _errorMessage = null;
     });
     try {
-      if (_video != null && _uploadedVideo == null) {
-        await _uploadSelectedVideo();
-      }
-      if (_video != null && _uploadedVideo == null) {
-        throw Exception('人物视频上传失败，请重新选择视频');
-      }
       await _apiClient.saveCustomCharacter(
         token: widget.token,
         fields: {for (final entry in _controllers.entries) entry.key: entry.value.text.trim()},
