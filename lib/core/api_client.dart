@@ -169,10 +169,17 @@ class ApiClient {
       ..fields['mediaType'] = mediaType
       ..files.add(await _multipartFile('file', file));
 
-    final response = await http.Response.fromStream(await request.send());
+    final response = await http.Response.fromStream(await request.send()).timeout(
+      const Duration(minutes: 15),
+      onTimeout: () => throw Exception('Upload timed out. Please try a shorter video or retry on a faster network.'),
+    );
     final body = _decodeResponse(response, fallbackMessage: 'Upload custom character media failed');
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? 'Upload custom character media failed');
+      final message = body['message']?.toString() ?? 'Upload custom character media failed';
+      if (message.contains('No static resource 50x.html')) {
+        throw Exception('Upload gateway returned a 50x error page. Check Nginx /api proxy timeout and 50x.html routing.');
+      }
+      throw Exception(message);
     }
     final data = body['data'] as Map<String, dynamic>;
     final url = data['url']?.toString() ?? '';
@@ -255,12 +262,16 @@ class ApiClient {
   }
 
   Future<http.MultipartFile> _multipartFile(String field, XFile file) async {
-    return http.MultipartFile.fromBytes(
-      field,
-      await file.readAsBytes(),
-      filename: file.name,
-      contentType: _mediaTypeFor(field, file),
-    );
+    final contentType = _mediaTypeFor(field, file);
+    if (file.path.isNotEmpty && !file.path.startsWith('blob:')) {
+      return http.MultipartFile.fromPath(
+        field,
+        file.path,
+        filename: file.name,
+        contentType: contentType,
+      );
+    }
+    return http.MultipartFile.fromBytes(field, await file.readAsBytes(), filename: file.name, contentType: contentType);
   }
 
   MediaType? _mediaTypeFor(String field, XFile file) {
