@@ -212,7 +212,7 @@ class _AssetPageBodyState extends State<AssetPageBody> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _selectedTab == 0 ? '(${_characters.length}/20)' : '(${_nfcCards.length})',
+                      _selectedTab == 0 ? '(${_characters.length})' : '(${_nfcCards.length})',
                       style: TextStyle(
                         color: Color(0xFFE5DAFF),
                         fontSize: 12,
@@ -311,6 +311,7 @@ class _AssetPageBodyState extends State<AssetPageBody> {
                   openingVideo: _openingVideo,
                   onTap: () => _openVideo(character),
                   onLike: () => _toggleLike(character),
+                  onDelete: character.sourceType == 2 ? () => _confirmDeleteCustomCharacter(character) : null,
                 );
               },
               childCount: groups.length,
@@ -379,7 +380,7 @@ class _AssetPageBodyState extends State<AssetPageBody> {
       final quota = await _apiClient.customCharacterQuota(token: token);
       final remaining = (quota['remaining'] as num?)?.toInt() ?? 0;
       if (remaining <= 0) {
-        _showMessage('本月最多上传 10 个自定义人物');
+        _showMessage('每个用户最多上传 10 个自定义人物');
         return;
       }
       if (!mounted) return;
@@ -393,6 +394,49 @@ class _AssetPageBodyState extends State<AssetPageBody> {
       if (saved == true && mounted) {
         await _loadCharacters();
         _showMessage('自定义人物已保存');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _confirmDeleteCustomCharacter(AssetCharacterData character) async {
+    final token = AuthSession.token;
+    if (token == null || token.isEmpty) {
+      _showMessage('请先登录后删除自定义人物');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF12172E),
+        title: const Text('删除自定义人物', style: TextStyle(color: Colors.white)),
+        content: Text(
+          '确定删除“${character.name}”吗？已绑定到 NFC 卡片的角色也会自动解绑。',
+          style: const TextStyle(color: Color(0xFFD9D4EA)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC43A5D)),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _apiClient.deleteCustomCharacter(token: token, collectionId: character.collectionId);
+      if (!mounted) return;
+      _showMessage('自定义人物已删除');
+      await _loadCharacters();
+      if (_nfcCards.isNotEmpty) {
+        await _loadNfcCards();
       }
     } catch (error) {
       if (!mounted) return;
@@ -846,7 +890,7 @@ class _CustomCharacterUploadDialogState extends State<CustomCharacterUploadDialo
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
           ),
           const Expanded(child: Text('上传自定义人物', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-          Text('本月剩余 ${widget.remaining}', style: const TextStyle(color: Color(0xFFC8B9EF), fontSize: 12)),
+          Text('还可上传 ${widget.remaining}', style: const TextStyle(color: Color(0xFFC8B9EF), fontSize: 12)),
         ],
       ),
     );
@@ -1347,6 +1391,7 @@ class AssetCharacterCard extends StatelessWidget {
     required this.openingVideo,
     required this.onTap,
     required this.onLike,
+    this.onDelete,
   });
 
   final AssetCharacterData data;
@@ -1355,6 +1400,7 @@ class AssetCharacterCard extends StatelessWidget {
   final bool openingVideo;
   final VoidCallback onTap;
   final VoidCallback onLike;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1431,7 +1477,26 @@ class AssetCharacterCard extends StatelessWidget {
               ),
             ),
           ),
-          if (count > 1)
+          if (onDelete != null)
+            Positioned(
+              top: 7,
+              left: 7,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onDelete,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0xDDC43A5D),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFFA8BD)),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 16),
+                ),
+              ),
+            )
+          else if (count > 1)
             Positioned(
               top: 7,
               left: 7,
@@ -1439,7 +1504,7 @@ class AssetCharacterCard extends StatelessWidget {
             ),
           if (data.sourceType == 2)
             Positioned(
-              top: count > 1 ? 39 : 7,
+              top: (count > 1 || onDelete != null) ? 39 : 7,
               left: 7,
               child: Container(
                 width: 28,

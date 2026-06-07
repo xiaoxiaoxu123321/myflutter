@@ -224,6 +224,21 @@ class ApiClient {
     }
   }
 
+  Future<void> deleteCustomCharacter({
+    required String token,
+    required int collectionId,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/custom-characters/$collectionId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    final body = _decodeResponse(response, fallbackMessage: 'Delete custom character failed');
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Delete custom character failed');
+    }
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response, {required String fallbackMessage}) {
     final text = utf8.decode(response.bodyBytes, allowMalformed: true).trim();
     if (text.isEmpty) {
