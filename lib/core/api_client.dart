@@ -7,18 +7,60 @@ class ApiClient {
   static const String baseUrl = ApiConfig.baseUrl;
 
   Future<Map<String, dynamic>> login({
-    required String phone,
-    required String code,
+    required String username,
+    required String password,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'code': code}),
+      body: jsonEncode({'username': username, 'password': password}),
     );
 
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Login failed');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> sendRegisterSmsCode({required String phone}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/sms-code'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': phone}),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Failed to send verification code');
+    }
+  }
+
+  Future<Map<String, dynamic>> register({
+    required String phone,
+    required String code,
+    required String username,
+    required String password,
+    required String confirmPassword,
+    String? referralCode,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'code': code,
+        'username': username,
+        'nickname': username,
+        'password': password,
+        'confirmPassword': confirmPassword,
+        if (referralCode != null) 'referralCode': referralCode,
+      }),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Register failed');
     }
     return body['data'] as Map<String, dynamic>;
   }

@@ -1,4 +1,5 @@
 ﻿import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
@@ -17,8 +18,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _phoneController = TextEditingController();
-  final _codeController = TextEditingController(text: '123456');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _apiClient = ApiClient();
   var _accepted = true;
   var _loading = false;
@@ -26,18 +27,18 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
     if (!_accepted) return;
-    final phone = _phoneController.text.trim();
-    final code = _codeController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
 
-    if (phone.isEmpty || code.isEmpty) {
-      setState(() => _errorMessage = '请输入手机号和验证码');
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = '请输入用户名和密码');
       return;
     }
 
@@ -48,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
 
     var loginSucceeded = false;
     try {
-      final data = await _apiClient.login(phone: phone, code: code);
+      final data = await _apiClient.login(username: username, password: password);
       AuthSession.isLoggedIn = true;
       AuthSession.token = data['token'] as String?;
       AuthSession.user = data['user'] as Map<String, dynamic>?;
@@ -63,6 +64,18 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  void _openRegister() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const RegisterPage(),
+      ),
+    ).then((registered) {
+      if (registered == true && mounted) {
+        Navigator.of(context).pop(true);
+      }
+    });
   }
 
   @override
@@ -125,18 +138,18 @@ class _LoginPageState extends State<LoginPage> {
                             const Center(child: PlanetMark()),
                             const SizedBox(height: 30),
                             LoginInput(
-                              icon: Icons.phone_iphone_rounded,
-                              hintText: '请输入手机号',
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
+                              icon: Icons.person_outline_rounded,
+                              hintText: '请输入用户名',
+                              controller: _usernameController,
+                              keyboardType: TextInputType.text,
                             ),
                             const SizedBox(height: 12),
                             LoginInput(
-                              icon: Icons.lock_outline_rounded,
-                              hintText: '请输入验证码',
-                              actionText: '固定验证码 123456',
-                              controller: _codeController,
-                              keyboardType: TextInputType.number,
+                              icon: Icons.password_rounded,
+                              hintText: '请输入密码',
+                              controller: _passwordController,
+                              keyboardType: TextInputType.visiblePassword,
+                              obscureText: true,
                             ),
                             const SizedBox(height: 17),
                             if (_errorMessage != null) ...[
@@ -165,12 +178,26 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 child: const Text(
-                                  '登录 / 注册',
+                                  '登录',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Center(
+                              child: TextButton(
+                                onPressed: _loading ? null : _openRegister,
+                                child: const Text(
+                                  '创建新账号',
+                                  style: TextStyle(
+                                    color: Color(0xFFC47BFF),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -193,6 +220,329 @@ class _LoginPageState extends State<LoginPage> {
                               ],
                             ),
                             const SizedBox(height: 28),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _accepted,
+                                    onChanged: (value) => setState(
+                                      () => _accepted = value ?? false,
+                                    ),
+                                    activeColor: const Color(0xFF8E5AFF),
+                                    side: const BorderSide(
+                                      color: Color(0xFF8E79C7),
+                                    ),
+                                    shape: const CircleBorder(),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(text: '我已阅读并同意 '),
+                                        TextSpan(
+                                          text: '《用户协议》',
+                                          style: TextStyle(
+                                            color: Color(0xFFC47BFF),
+                                          ),
+                                        ),
+                                        TextSpan(text: ' 和 '),
+                                        TextSpan(
+                                          text: '《隐私政策》',
+                                          style: TextStyle(
+                                            color: Color(0xFFC47BFF),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    style: TextStyle(
+                                      color: Color(0xFFBEB0D8),
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      letterSpacing: 0,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final _phoneController = TextEditingController();
+  final _codeController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _referralCodeController = TextEditingController();
+  final _apiClient = ApiClient();
+  var _accepted = true;
+  var _loading = false;
+  var _sendingCode = false;
+  var _codeCountdown = 0;
+  Timer? _codeTimer;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _codeController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
+    _codeTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = '请输入手机号');
+      return;
+    }
+    if (_sendingCode || _codeCountdown > 0) return;
+
+    setState(() {
+      _sendingCode = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _apiClient.sendRegisterSmsCode(phone: phone);
+      if (!mounted) return;
+      setState(() => _codeCountdown = 60);
+      _codeTimer?.cancel();
+      _codeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_codeCountdown <= 1) {
+          timer.cancel();
+          setState(() => _codeCountdown = 0);
+          return;
+        }
+        setState(() => _codeCountdown -= 1);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _sendingCode = false);
+      }
+    }
+  }
+
+  Future<void> _register() async {
+    if (!_accepted) return;
+    final phone = _phoneController.text.trim();
+    final code = _codeController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    final referralCode = _referralCodeController.text.trim();
+
+    if (phone.isEmpty || code.isEmpty || username.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      setState(() => _errorMessage = '请完整填写注册信息');
+      return;
+    }
+    if (password != confirmPassword) {
+      setState(() => _errorMessage = '两次输入的密码不一致');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    var registerSucceeded = false;
+    try {
+      final data = await _apiClient.register(
+        phone: phone,
+        code: code,
+        username: username,
+        password: password,
+        confirmPassword: confirmPassword,
+        referralCode: referralCode.isEmpty ? null : referralCode,
+      );
+      AuthSession.isLoggedIn = true;
+      AuthSession.token = data['token'] as String?;
+      AuthSession.user = data['user'] as Map<String, dynamic>?;
+      registerSucceeded = true;
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted && !registerSucceeded) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth > 520 ? 420.0 : double.infinity;
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Stack(
+                  children: [
+                    const Positioned.fill(child: LoginBackground()),
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight - 24,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                              color: Colors.white,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 36,
+                                height: 36,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              '创建新账号',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 25,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              '开启你的心象之旅',
+                              style: TextStyle(
+                                color: Color(0xFFC8BEDF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            LoginInput(
+                              icon: Icons.phone_iphone_rounded,
+                              hintText: '请输入手机号',
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                            ),
+                            const SizedBox(height: 12),
+                            LoginInput(
+                              icon: Icons.lock_outline_rounded,
+                              hintText: '请输入验证码',
+                              actionText: _codeCountdown > 0
+                                  ? '${_codeCountdown}s'
+                                  : (_sendingCode ? '发送中' : '获取验证码'),
+                              onAction: _codeCountdown > 0 || _sendingCode ? null : _sendCode,
+                              controller: _codeController,
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+                            LoginInput(
+                              icon: Icons.person_outline_rounded,
+                              hintText: '请输入用户名',
+                              controller: _usernameController,
+                              keyboardType: TextInputType.text,
+                            ),
+                            const SizedBox(height: 12),
+                            LoginInput(
+                              icon: Icons.password_rounded,
+                              hintText: '请输入密码',
+                              controller: _passwordController,
+                              keyboardType: TextInputType.visiblePassword,
+                              obscureText: true,
+                            ),
+                            const SizedBox(height: 12),
+                            LoginInput(
+                              icon: Icons.verified_user_outlined,
+                              hintText: '请再次输入密码',
+                              controller: _confirmPasswordController,
+                              keyboardType: TextInputType.visiblePassword,
+                              obscureText: true,
+                            ),
+                            const SizedBox(height: 12),
+                            LoginInput(
+                              icon: Icons.card_giftcard_rounded,
+                              hintText: '请输入推荐码（选填）',
+                              controller: _referralCodeController,
+                              keyboardType: TextInputType.text,
+                            ),
+                            const SizedBox(height: 17),
+                            if (_errorMessage != null) ...[
+                              Text(
+                                _errorMessage!,
+                                style: const TextStyle(
+                                  color: Color(0xFFFF9BA6),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: FilledButton(
+                                onPressed: _accepted && !_loading ? _register : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF8350DC),
+                                  disabledBackgroundColor: const Color(0xFF3B2E55),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  _loading ? '注册中...' : '注册并登录',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -394,6 +744,8 @@ class LoginInput extends StatelessWidget {
     required this.controller,
     required this.keyboardType,
     this.actionText,
+    this.onAction,
+    this.obscureText = false,
   });
 
   final IconData icon;
@@ -401,6 +753,8 @@ class LoginInput extends StatelessWidget {
   final TextEditingController controller;
   final TextInputType keyboardType;
   final String? actionText;
+  final VoidCallback? onAction;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -430,15 +784,24 @@ class LoginInput extends StatelessWidget {
               ),
               style: const TextStyle(color: Colors.white, fontSize: 14),
               keyboardType: keyboardType,
+              obscureText: obscureText,
             ),
           ),
           if (actionText != null)
-            Text(
-              actionText!,
-              style: const TextStyle(
-                color: Color(0xFFC47BFF),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                actionText!,
+                style: TextStyle(
+                  color: onAction == null ? const Color(0xFF7D728E) : const Color(0xFFC47BFF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
         ],

@@ -14,7 +14,7 @@ class BottomTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     const items = [
       _TabItem('首页', Icons.home_outlined),
-      _TabItem('资产', Icons.widgets_outlined),
+      _TabItem('资产', Icons.grid_view_rounded),
       _TabItem('礼物', Icons.card_giftcard_rounded),
       _TabItem('广场', Icons.favorite_border_rounded),
       _TabItem('我的', Icons.person_outline_rounded),
@@ -30,9 +30,9 @@ class BottomTabs extends StatelessWidget {
             height: 58,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xEE121027),
+              color: const Color(0xF00D0F22),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF322653)),
+              border: Border.all(color: const Color(0xFF2B3154)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x99000000),
@@ -102,26 +102,39 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFFE9C6FF) : const Color(0xFFB7B1CA);
+    final color = active ? const Color(0xFFF0C6FF) : const Color(0xFFBBB8D1);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(item.icon, color: color, size: 18),
-          const SizedBox(height: 2),
-          Text(
-            item.label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              letterSpacing: 0,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFC65CFF).withValues(alpha: 0.28),
+                    blurRadius: 14,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(item.icon, color: color, size: 18),
+            const SizedBox(height: 2),
+            Text(
+              item.label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+                letterSpacing: 0,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -156,10 +169,14 @@ class _CenterGiftButton extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFFC65CFF).withValues(
-                      alpha: active ? 0.8 : 0.55,
+                      alpha: active ? 0.9 : 0.62,
                     ),
-                    blurRadius: active ? 26 : 20,
-                    spreadRadius: active ? 3 : 1,
+                    blurRadius: active ? 28 : 22,
+                    spreadRadius: active ? 4 : 1,
+                  ),
+                  const BoxShadow(
+                    color: Color(0x668A2FFF),
+                    blurRadius: 18,
                   ),
                 ],
               ),
