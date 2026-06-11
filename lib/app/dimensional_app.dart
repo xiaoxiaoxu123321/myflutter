@@ -33,7 +33,19 @@ class AppConsentGate extends StatefulWidget {
 }
 
 class _AppConsentGateState extends State<AppConsentGate> {
+  static const _appControlChannel = MethodChannel('dimensional/app_control');
+
   var _accepted = false;
+
+  Future<void> _exitApp() async {
+    try {
+      await _appControlChannel.invokeMethod<void>('exitApp');
+    } on MissingPluginException {
+      await SystemNavigator.pop();
+    } on PlatformException {
+      await SystemNavigator.pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +55,9 @@ class _AppConsentGateState extends State<AppConsentGate> {
 
     return ConsentPage(
       onAccepted: () => setState(() => _accepted = true),
-      onRejected: () => SystemNavigator.pop(),
+      onRejected: () {
+        _exitApp();
+      },
     );
   }
 }

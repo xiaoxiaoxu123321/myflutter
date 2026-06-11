@@ -163,7 +163,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
 
   void _openContactUs() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ContactUsPage()),
+      MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()),
     );
   }
 
@@ -653,7 +653,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                         const Expanded(
                           child: SingleChildScrollView(
                             padding: EdgeInsets.fromLTRB(28, 14, 28, 22),
-                            child: PrivacyPolicyContent(),
+                            child: UpdatedPrivacyPolicyContent(),
                           ),
                         ),
                         Padding(
@@ -747,6 +747,101 @@ class PrivacyPolicyContent extends StatelessWidget {
   }
 }
 
+class UpdatedPrivacyPolicyContent extends StatelessWidget {
+  const UpdatedPrivacyPolicyContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DefaultTextStyle(
+      style: TextStyle(
+        color: Color(0xFFC9CEE3),
+        fontSize: 13,
+        height: 1.55,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '心象频率隐私政策',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.35,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 12),
+          Text('更新日期：2026年6月6日'),
+          SizedBox(height: 2),
+          Text('生效日期：2026年6月6日'),
+          SizedBox(height: 22),
+          Text('我们非常重视您的个人信息保护。'),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '我们收集的信息',
+            paragraphs: [
+              '账号信息',
+              '用户ID',
+              '昵称',
+              '头像',
+              '设备信息',
+              '设备型号',
+              '操作系统版本',
+              '应用版本',
+              '使用信息',
+              '抽卡记录',
+              '角色收藏记录',
+              'NFC绑定记录',
+              '互动记录',
+              '用户上传内容',
+              '头像',
+              '自定义语音',
+              '用户反馈信息',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '我们如何使用信息',
+            paragraphs: [
+              '用于：',
+              '提供服务',
+              '保存角色数据',
+              '提升产品体验',
+              '风险控制',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '权限说明',
+            paragraphs: [
+              '可能申请以下权限：',
+              '麦克风权限',
+              '用于录制角色互动语音。',
+              '相册权限',
+              '用于上传头像图片。',
+              '相机权限',
+              '用于拍摄头像或上传照片。',
+              'NFC权限',
+              '用于识别和绑定实体角色贴纸。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '信息存储',
+            paragraphs: [
+              '用户数据将通过加密方式进行存储。',
+              '未经用户同意不会向第三方出售个人信息。',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class UserAgreementPage extends StatelessWidget {
   const UserAgreementPage({super.key});
 
@@ -818,7 +913,7 @@ class UserAgreementPage extends StatelessWidget {
                         const Expanded(
                           child: SingleChildScrollView(
                             padding: EdgeInsets.fromLTRB(28, 14, 28, 22),
-                            child: UserAgreementContent(),
+                            child: UpdatedUserAgreementContent(),
                           ),
                         ),
                         Padding(
@@ -914,6 +1009,97 @@ class UserAgreementContent extends StatelessWidget {
   }
 }
 
+class UpdatedUserAgreementContent extends StatelessWidget {
+  const UpdatedUserAgreementContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DefaultTextStyle(
+      style: TextStyle(
+        color: Color(0xFFC9CEE3),
+        fontSize: 13,
+        height: 1.55,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '心象频率用户协议',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.35,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 12),
+          Text('更新日期：2026年6月6日'),
+          SizedBox(height: 2),
+          Text('生效日期：2026年6月6日'),
+          SizedBox(height: 22),
+          Text('欢迎使用心象频率。'),
+          SizedBox(height: 12),
+          Text('当您注册、登录或使用本应用时，即视为已阅读并同意本协议。'),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '账号规则',
+            paragraphs: [
+              '用户应保证注册信息真实合法。',
+              '不得：',
+              '冒充他人',
+              '发布违法内容',
+              '利用系统进行骚扰',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '虚拟内容',
+            paragraphs: [
+              '应用内角色、道具、抽卡奖励等均属于虚拟数字内容。',
+              '用户获得的是使用权而非所有权。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '抽卡规则',
+            paragraphs: [
+              '抽卡结果由概率机制随机生成。',
+              '用户理解并接受随机结果。',
+              '运营方不会承诺获得指定角色。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '用户生成内容',
+            paragraphs: [
+              '用户上传的头像、昵称、语音等内容应合法合规。',
+              '用户应保证拥有相关内容使用权。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '服务变更',
+            paragraphs: [
+              '运营方有权根据业务发展调整功能、活动和运营规则。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '协议修改',
+            paragraphs: [
+              '运营方有权对本协议进行更新。',
+              '更新后继续使用即视为同意。',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class DisclaimerPage extends StatelessWidget {
   const DisclaimerPage({super.key});
 
@@ -922,7 +1108,7 @@ class DisclaimerPage extends StatelessWidget {
     return LegalShell(
       title: '免责声明',
       bottom: GradientReturnButton(onPressed: () => Navigator.of(context).pop()),
-      child: const DisclaimerContent(),
+      child: const UpdatedDisclaimerContent(),
     );
   }
 }
@@ -978,6 +1164,91 @@ class DisclaimerContent extends StatelessWidget {
             title: '3. 测试结果说明',
             paragraphs: [
               '应用中的人格测试、恋爱测试、性格测试等功能仅供娱乐参考，测试结果不构成心理诊断依据。',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class UpdatedDisclaimerContent extends StatelessWidget {
+  const UpdatedDisclaimerContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DefaultTextStyle(
+      style: TextStyle(
+        color: Color(0xFFC9CEE3),
+        fontSize: 13,
+        height: 1.55,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '心象频率免责声明',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.35,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 12),
+          Text('更新日期：2026年6月6日'),
+          SizedBox(height: 2),
+          Text('生效日期：2026年6月6日'),
+          SizedBox(height: 22),
+          Text('欢迎使用心象频率。'),
+          SizedBox(height: 12),
+          Text(
+            '本应用中的角色形象、对话内容、互动视频、抽卡测试、人格测试等内容均由系统生成或整理，仅供娱乐、陪伴及社交体验使用。',
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: 'AI内容说明',
+            paragraphs: [
+              '本应用所展示的对话、建议、测试结果及角色互动内容均由人工智能生成。',
+              '相关内容仅供参考，不代表专业意见。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '非专业服务声明',
+            paragraphs: [
+              '本应用不提供：',
+              '医疗服务',
+              '心理咨询服务',
+              '法律服务',
+              '投资理财服务',
+              '用户不应依据应用内容作出重大决策。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '测试结果说明',
+            paragraphs: [
+              '应用中的人格测试、恋爱测试、性格测试等功能仅供娱乐参考。',
+              '测试结果不构成心理诊断依据。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '虚拟角色说明',
+            paragraphs: [
+              '应用中的角色均为虚拟角色。',
+              '其言论、行为和观点不代表运营方立场。',
+            ],
+          ),
+          SizedBox(height: 20),
+          _PolicySection(
+            title: '用户责任',
+            paragraphs: [
+              '用户应自行判断并承担使用本应用产生的相关风险和后果。',
             ],
           ),
         ],
@@ -1232,6 +1503,107 @@ class ContactUsPage extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class UpdatedContactUsPage extends StatelessWidget {
+  const UpdatedContactUsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LegalShell(
+      title: '联系我们',
+      showBottomPadding: false,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ContactHeroCard(),
+          SizedBox(height: 12),
+          CustomerWechatCard(),
+          SizedBox(height: 8),
+          ContactMethodCard(
+            icon: Icons.business_center_outlined,
+            title: '商务合作',
+            value: '13761318177',
+            subtitle: '欢迎合作洽谈',
+          ),
+          SizedBox(height: 72),
+          Center(
+            child: Text(
+              '感谢您的支持与信任',
+              style: TextStyle(
+                color: Color(0xFF979ABC),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CustomerWechatCard extends StatelessWidget {
+  const CustomerWechatCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: const Color(0x73101A33),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF28375D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.qr_code_2_rounded, color: Color(0xFFC9A6FF), size: 24),
+              SizedBox(width: 12),
+              Text(
+                '客服微信',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/customer-wechat-qr.png',
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const SizedBox(
+                  height: 260,
+                  child: Center(
+                    child: Text(
+                      '请添加客服微信二维码图片',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF9CA4C6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
