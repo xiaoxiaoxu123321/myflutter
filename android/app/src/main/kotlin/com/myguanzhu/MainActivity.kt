@@ -1,4 +1,4 @@
-package com.onlydu
+package com.myguanzhu
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
