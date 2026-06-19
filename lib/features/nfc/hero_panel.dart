@@ -131,13 +131,15 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
           }
           if (AuthSession.isLoggedIn && readResult.text != null) {
             await _bindNfcText(readResult.text!, dataLines);
+          } else if (AuthSession.isGuest && readResult.text != null) {
+            await _playGuestNfcText(readResult.text!, dataLines);
           }
           if (!mounted) return;
 
           setState(() {
             _flashTrigger++;
             _nfcMessage = '已感应到卡片';
-            _nfcSubMessage = AuthSession.isLoggedIn ? '数据已读取' : '请先登录';
+            _nfcSubMessage = AuthSession.isLoggedIn || AuthSession.isGuest ? '数据已读取' : '请先登录';
             _nfcDataLines = dataLines;
           });
           _goLoginIfNeeded(dataLines, readResult.text);
@@ -359,6 +361,32 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _playGuestNfcText(String text, List<String> lines) async {
+    try {
+      final scan = await _apiClient.publicScanNfcText(text: text);
+      final status = scan['status']?.toString() ?? '';
+      if (status == 'AVAILABLE') {
+        lines.add('游客访问：该 NFC 卡片尚未绑定人物');
+        return;
+      }
+      if (status == 'NOT_FOUND') {
+        lines.add('游客访问：未找到该 NFC 卡片');
+        return;
+      }
+      final hasCharacter = scan['characterCollectionId'] != null;
+      final videoUrl = scan['previewVideoUrl']?.toString() ?? '';
+      final objectKey = scan['previewVideoObjectKey']?.toString() ?? '';
+      if (!hasCharacter || (videoUrl.isEmpty && objectKey.isEmpty)) {
+        lines.add('游客访问：该 NFC 卡片未关联可播放人物');
+        return;
+      }
+      lines.add('游客访问：播放关联人物视频');
+      if (mounted) await _openNfcCardVideoDialog(scan, null);
+    } catch (error) {
+      lines.add('游客访问失败：${error.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
   Future<void> _handleScannedNfcCard(Map<String, dynamic> card, String token) async {
     final ownedByCurrentUser = card['ownedByCurrentUser'] == true;
     final giftModeEnabled = card['giftModeEnabled'] == true;
@@ -419,13 +447,14 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _openNfcCardVideoDialog(Map<String, dynamic> card, String token) async {
+  Future<void> _openNfcCardVideoDialog(Map<String, dynamic> card, String? token) async {
     final objectKey = card['previewVideoObjectKey']?.toString();
     final fallbackUrl = card['previewVideoUrl']?.toString();
     final audioObjectKey = card['audioObjectKey']?.toString();
     final fallbackAudioUrl = card['audioUrl']?.toString();
-    if ((objectKey == null || objectKey.isEmpty) &&
-        (fallbackUrl == null || fallbackUrl.isEmpty)) {
+    final canProxyVideo = token != null && token.isNotEmpty && objectKey != null && objectKey.isNotEmpty;
+    final canUseDirectVideo = fallbackUrl != null && fallbackUrl.isNotEmpty;
+    if (!canProxyVideo && !canUseDirectVideo) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('暂无可播放视频')),
       );
@@ -440,11 +469,11 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     );
 
     try {
-      final videoUrl = objectKey != null && objectKey.isNotEmpty
-          ? await _apiClient.giftVideoProxyUrl(token: token, objectKey: objectKey)
+      final videoUrl = canProxyVideo
+          ? await _apiClient.giftVideoProxyUrl(token: token, objectKey: objectKey!)
           : (fallbackUrl ?? '');
       String? audioUrl;
-      if (audioObjectKey != null && audioObjectKey.isNotEmpty) {
+      if (audioObjectKey != null && audioObjectKey.isNotEmpty && token != null && token.isNotEmpty) {
         audioUrl = await _apiClient.giftMediaUrl(token: token, objectKey: audioObjectKey);
       } else if (fallbackAudioUrl != null && fallbackAudioUrl.isNotEmpty) {
         audioUrl = fallbackAudioUrl;
@@ -566,7 +595,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
   }
 
   void _goLoginIfNeeded(List<String> nfcDataLines, String? nfcText) {
-    if (AuthSession.isLoggedIn) return;
+    if (AuthSession.isLoggedIn || AuthSession.isGuest) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LoginPage(

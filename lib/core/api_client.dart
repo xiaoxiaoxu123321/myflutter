@@ -36,6 +36,42 @@ class ApiClient {
     }
   }
 
+  Future<void> sendPasswordResetSmsCode({required String phone}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/password-reset/sms-code'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': phone}),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Failed to send verification code');
+    }
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String code,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/password-reset'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'code': code,
+        'password': password,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Failed to reset password');
+    }
+  }
+
   Future<Map<String, dynamic>> register({
     required String phone,
     required String code,
@@ -128,6 +164,22 @@ class ApiClient {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
+      body: jsonEncode({'text': text}),
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Failed to read NFC card');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> publicScanNfcText({
+    required String text,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/assets/nfc/public-scan'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'text': text}),
     );
 
@@ -378,6 +430,19 @@ class ApiClient {
     final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Draw failed');
+    }
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> giftCheckIn({required String token}) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/gifts/check-in'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Check in failed');
     }
     return body['data'] as Map<String, dynamic>;
   }

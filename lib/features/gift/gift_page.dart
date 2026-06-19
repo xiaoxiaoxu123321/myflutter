@@ -16,7 +16,9 @@ class GiftPageBody extends StatefulWidget {
 class _GiftPageBodyState extends State<GiftPageBody> {
   final _apiClient = ApiClient();
   var _loading = false;
+  var _checkingIn = false;
   var _availableDrawCount = 0;
+  var _checkedInToday = false;
   String? _errorMessage;
 
   static const _characters = [
@@ -36,6 +38,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
     if (token == null || token.isEmpty) {
       setState(() {
         _availableDrawCount = 0;
+        _checkedInToday = false;
         _errorMessage = '请先登录后查看抽奖次数';
       });
       return;
@@ -52,6 +55,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
       setState(() {
         _availableDrawCount =
             int.tryParse(data['availableDrawCount']?.toString() ?? '') ?? 0;
+        _checkedInToday = data['checkedInToday'] == true;
       });
     } catch (error) {
       if (!mounted) return;
@@ -100,6 +104,42 @@ class _GiftPageBodyState extends State<GiftPageBody> {
     } finally {
       if (mounted) {
         setState(() => _loading = false);
+      }
+    }
+  }
+
+  Future<void> _checkIn() async {
+    final token = AuthSession.token;
+    if (token == null || token.isEmpty) {
+      setState(() => _errorMessage = '请先登录后打卡');
+      return;
+    }
+    if (_checkingIn || _checkedInToday) return;
+
+    setState(() {
+      _checkingIn = true;
+      _errorMessage = null;
+    });
+    try {
+      final data = await _apiClient.giftCheckIn(token: token);
+      if (!mounted) return;
+      setState(() {
+        _availableDrawCount =
+            int.tryParse(data['availableDrawCount']?.toString() ?? '') ?? 0;
+        _checkedInToday = data['checkedInToday'] == true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('打卡成功，已赠送 3 次抽卡机会')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      });
+      _loadSummary();
+    } finally {
+      if (mounted) {
+        setState(() => _checkingIn = false);
       }
     }
   }
@@ -186,6 +226,41 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                   loading: _loading,
                   errorMessage: _errorMessage,
                   onRefresh: _loadSummary,
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 38,
+                  child: FilledButton.icon(
+                    onPressed: !_checkedInToday && !_checkingIn && !_loading
+                        ? _checkIn
+                        : null,
+                    icon: Icon(
+                      _checkedInToday
+                          ? Icons.check_circle_rounded
+                          : Icons.calendar_month_rounded,
+                      size: 17,
+                    ),
+                    label: Text(
+                      _checkedInToday
+                          ? '今日已打卡'
+                          : (_checkingIn ? '打卡中...' : '今日打卡 +3 次'),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2B7A68),
+                      disabledBackgroundColor: const Color(0xFF303342),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: const Color(0xFF9EA3B8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 const GiftSectionHeader(),
@@ -842,7 +917,7 @@ class GiftDrawCountCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Text(
-                    errorMessage ?? '首次登录奖励 x 1',
+                    errorMessage ?? '首次登录奖励 x 10',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

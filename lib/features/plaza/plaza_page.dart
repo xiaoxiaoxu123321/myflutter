@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -57,7 +57,7 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
       if (!mounted) return;
       setState(() {
         _catalogLoading = false;
-        _catalogError = '图鉴加载失败，请检查后端服务';
+        _catalogError = '鍥鹃壌鍔犺浇澶辫触锛岃妫€鏌ュ悗绔湇鍔?;
       });
     }
   }
@@ -99,7 +99,7 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
                     const SizedBox(height: 12),
                     _FeaturedBanner(onOpenGift: widget.onOpenGift),
                     const SizedBox(height: 16),
-                    _SectionTitle(title: '全系列图鉴', action: '全部系列 >'),
+                    _SectionTitle(title: '鍏ㄧ郴鍒楀浘閴?, action: '鍏ㄩ儴绯诲垪 >'),
                     const SizedBox(height: 8),
                     _FilterBar(
                       series: _series,
@@ -108,11 +108,11 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
                     ),
                     const SizedBox(height: 9),
                     if (_catalogLoading)
-                      const _CatalogMessage(message: '正在加载全系列图鉴...')
+                      const _CatalogMessage(message: '姝ｅ湪鍔犺浇鍏ㄧ郴鍒楀浘閴?..')
                     else if (_catalogError != null)
                       _CatalogMessage(message: _catalogError!)
                     else if (visibleCharacters.isEmpty)
-                      const _CatalogMessage(message: '当前系列暂无卡片')
+                      const _CatalogMessage(message: '褰撳墠绯诲垪鏆傛棤鍗＄墖')
                     else
                       GridView.builder(
                         shrinkWrap: true,
@@ -142,6 +142,7 @@ class _PlazaPageBodyState extends State<PlazaPageBody> {
 class _PlazaHeader extends StatelessWidget {
   const _PlazaHeader();
 
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -164,12 +165,12 @@ class _PlazaHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '心象广场',
+                '蹇冭薄骞垮満',
                 style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
               ),
               SizedBox(height: 2),
               Text(
-                '发现新的心象人格，解锁属于你的故事',
+                '鍙戠幇鏂扮殑蹇冭薄浜烘牸锛岃В閿佸睘浜庝綘鐨勬晠浜?,
                 style: TextStyle(color: Color(0xFFB8B3DB), fontSize: 10, fontWeight: FontWeight.w600),
               ),
             ],
@@ -228,9 +229,9 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
       final slides = data
           .map(
             (item) => _FeaturedSlide(
-              item['title']?.toString() ?? '月海系列新角色',
+              item['title']?.toString() ?? '鏈堟捣绯诲垪鏂拌鑹?,
               item['characterName']?.toString() ?? '',
-              item['subtitle']?.toString() ?? '限时概率UP ↑',
+              item['subtitle']?.toString() ?? '闄愭椂姒傜巼UP 鈫?,
               item['imageUrl']?.toString() ?? '',
             ),
           )
@@ -239,7 +240,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
       if (!mounted) return;
       setState(() {
         _slides = slides;
-        _loadError = slides.isEmpty ? '后端暂未配置广场轮播数据' : null;
+        _loadError = slides.isEmpty ? '鍚庣鏆傛湭閰嶇疆骞垮満杞挱鏁版嵁' : null;
         _currentPage = 0;
       });
       if (_pageController.hasClients) {
@@ -247,7 +248,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _loadError = '广场轮播加载失败，请检查后端服务');
+      setState(() => _loadError = '骞垮満杞挱鍔犺浇澶辫触锛岃妫€鏌ュ悗绔湇鍔?);
     }
   }
 
@@ -272,7 +273,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
         fit: StackFit.expand,
         children: [
           if (_slides.isEmpty)
-            _BannerError(message: _loadError ?? '正在加载广场轮播...')
+            _BannerError(message: _loadError ?? '姝ｅ湪鍔犺浇骞垮満杞挱...')
           else ...[
           PageView.builder(
             controller: _pageController,
@@ -284,7 +285,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
                 Image.network(
                   _slides[index].imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const _BannerError(message: 'OSS 图片加载失败'),
+                  errorBuilder: (_, _, _) => const _BannerError(message: 'OSS 鍥剧墖鍔犺浇澶辫触'),
                 ),
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -327,7 +328,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
                           backgroundColor: const Color(0xFF7937DD),
                           padding: EdgeInsets.zero,
                         ),
-                        child: const Text('去抽取', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                        child: const Text('鍘绘娊鍙?, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
                       ),
                     ),
                     const Spacer(),
@@ -417,7 +418,7 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filters = [const _PlazaSeries(null, '全部'), ...series];
+    final filters = [const _PlazaSeries(null, '鍏ㄩ儴'), ...series];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -463,12 +464,12 @@ class _CharacterCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (character.imageUrl.isEmpty)
-            const _CatalogMessage(message: '未配置图片')
+            const _CatalogMessage(message: '鏈厤缃浘鐗?)
           else
             Image.network(
               character.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const _CatalogMessage(message: 'OSS 图片加载失败'),
+              errorBuilder: (_, _, _) => const _CatalogMessage(message: 'OSS 鍥剧墖鍔犺浇澶辫触'),
             ),
           const DecoratedBox(
             decoration: BoxDecoration(

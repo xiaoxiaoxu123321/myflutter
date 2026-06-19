@@ -75,6 +75,14 @@ class _AssetPageBodyState extends State<AssetPageBody> {
   Future<void> _loadCharacters() async {
     final token = AuthSession.token;
     if (token == null || token.isEmpty) {
+      if (AuthSession.isGuest) {
+        setState(() {
+          _characters = [];
+          _errorMessage = null;
+          _loading = false;
+        });
+        return;
+      }
       setState(() => _errorMessage = '请先登录后查看资产');
       return;
     }
@@ -107,6 +115,14 @@ class _AssetPageBodyState extends State<AssetPageBody> {
   Future<void> _loadNfcCards() async {
     final token = AuthSession.token;
     if (token == null || token.isEmpty) {
+      if (AuthSession.isGuest) {
+        setState(() {
+          _nfcCards = [];
+          _cardErrorMessage = null;
+          _loadingCards = false;
+        });
+        return;
+      }
       setState(() => _cardErrorMessage = '请先登录后查看 NFC 卡片');
       return;
     }
@@ -221,7 +237,7 @@ class _AssetPageBodyState extends State<AssetPageBody> {
                       ),
                     ),
                     const Spacer(),
-                    if (_selectedTab == 0)
+                    if (_selectedTab == 0 && !AuthSession.isGuest)
                       SizedBox(
                         height: 28,
                         child: FilledButton.icon(
@@ -275,8 +291,8 @@ class _AssetPageBodyState extends State<AssetPageBody> {
     if (_characters.isEmpty) {
       return _AssetEmptyState(
         icon: Icons.style_outlined,
-        message: '还没有抽到角色', 
-        onRetry: _loadCharacters,
+        message: AuthSession.isGuest ? '游客模式下暂无角色' : '还没有抽到角色',
+        onRetry: AuthSession.isGuest ? null : _loadCharacters,
       );
     }
     final groups = _visibleCharacterGroups;
@@ -336,8 +352,8 @@ class _AssetPageBodyState extends State<AssetPageBody> {
     if (_nfcCards.isEmpty) {
       return _AssetEmptyState(
         icon: Icons.credit_card_rounded,
-        message: '还没有绑定 NFC 卡片',
-        onRetry: _loadNfcCards,
+        message: AuthSession.isGuest ? '游客模式下暂无卡片' : '还没有绑定 NFC 卡片',
+        onRetry: AuthSession.isGuest ? null : _loadNfcCards,
       );
     }
     return RefreshIndicator(
@@ -559,7 +575,7 @@ class _AssetEmptyState extends StatelessWidget {
 
   final IconData icon;
   final String message;
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -579,11 +595,13 @@ class _AssetEmptyState extends StatelessWidget {
               letterSpacing: 0,
             ),
           ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('刷新'),
-          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text('刷新'),
+            ),
+          ],
         ],
       ),
     );

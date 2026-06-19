@@ -1,6 +1,8 @@
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
@@ -33,8 +35,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     });
     try {
       final user = await _apiClient.currentUser(token: token);
-      AuthSession.user = user;
-      AuthSession.isLoggedIn = true;
+      AuthSession.enterUserMode(authToken: token, currentUser: user);
       if (!mounted) return;
       setState(() {});
     } catch (error) {
@@ -65,6 +66,17 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     });
   }
 
+  void _enterGuestMode() {
+    setState(() {
+      AuthSession.enterGuestMode();
+      _errorMessage = null;
+      _loadingUser = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('宸茶繘鍏ユ父瀹㈣闂?)),
+    );
+  }
+
   Future<void> _editNickname() async {
     final token = AuthSession.token;
     if (token == null || token.isEmpty) {
@@ -80,24 +92,24 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF15162C),
-          title: const Text('修改昵称'),
+          title: const Text('淇敼鏄电О'),
           content: TextField(
             controller: controller,
             autofocus: true,
             maxLength: 64,
             decoration: const InputDecoration(
-              hintText: '请输入昵称',
+              hintText: '璇疯緭鍏ユ樀绉?,
               counterText: '',
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: const Text('鍙栨秷'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('保存'),
+              child: const Text('淇濆瓨'),
             ),
           ],
         );
@@ -132,14 +144,12 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
 
   void _logout() {
     setState(() {
-      AuthSession.isLoggedIn = false;
-      AuthSession.token = null;
-      AuthSession.user = null;
+      AuthSession.clear();
       _errorMessage = null;
       _loadingUser = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已退出登录')),
+      const SnackBar(content: Text('宸查€€鍑虹櫥褰?)),
     );
   }
 
@@ -167,6 +177,27 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     );
   }
 
+  Future<void> _openPasswordReset() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => PasswordResetDialog(apiClient: _apiClient),
+    );
+  }
+
+  void _sharePublicId() {
+    final publicId = AuthSession.user?['publicId']?.toString() ?? '';
+    if (publicId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('璇峰厛鐧诲綍鍚庡垎浜獻D')),
+      );
+      return;
+    }
+    Clipboard.setData(ClipboardData(text: publicId));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('宸插鍒跺垎浜獻D锛?publicId')),
+    );
+  }
+
   void _openVersionInfo() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const VersionInfoPage()),
@@ -177,11 +208,10 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
   Widget build(BuildContext context) {
     final user = AuthSession.user;
     final isLoggedIn = AuthSession.isLoggedIn && AuthSession.token != null;
-    final phone = user?['phone']?.toString();
+    final isGuest = AuthSession.isGuest;
     final name = user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
-    final idText = phone == null || phone.length < 4
-        ? 'ID：100023847'
-        : 'ID：${phone.substring(phone.length - 4).padLeft(9, '0')}';
+    final publicId = user?['publicId']?.toString();
+    final idText = publicId == null || publicId.isEmpty ? 'ID：-' : 'ID：$publicId';
 
     return Container(
       decoration: BoxDecoration(
@@ -221,68 +251,82 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ProfileHeader(
-                    name: name,
+                    name: isGuest ? '娓稿' : name,
                     idText: idText,
                     errorMessage: _errorMessage,
                     loading: _loadingUser,
                     isLoggedIn: isLoggedIn,
+                    isGuest: isGuest,
                     onLogin: _openLogin,
+                    onGuest: _enterGuestMode,
                     onEdit: _editNickname,
                   ),
                   const SizedBox(height: 26),
                   const ProfileMenuGroup(
-                    title: '关于',
+                    title: '鍏充簬',
                     items: [
                       ProfileMenuItemData(
                         icon: Icons.info_outline_rounded,
-                        title: '关于我们',
-                        subtitle: '了解心象频率',
+                        title: '鍏充簬鎴戜滑',
+                        subtitle: '浜嗚В蹇冭薄棰戠巼',
                       ),
                       ProfileMenuItemData(
                         icon: Icons.info_outline_rounded,
-                        title: '企业愿景',
-                        subtitle: '我们想让陪伴更有温度',
+                        title: '浼佷笟鎰挎櫙',
+                        subtitle: '鎴戜滑鎯宠闄即鏇存湁娓╁害',
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   ProfileMenuGroup(
-                    title: '协议与说明',
+                    title: '鍗忚涓庤鏄?,
                     items: [
                       ProfileMenuItemData(
                         icon: Icons.article_outlined,
-                        title: '用户协议',
-                        subtitle: '使用规则与权益说明',
+                        title: '鐢ㄦ埛鍗忚',
+                        subtitle: '浣跨敤瑙勫垯涓庢潈鐩婅鏄?,
                         onTap: _openUserAgreement,
                       ),
                       ProfileMenuItemData(
                         icon: Icons.lock_outline_rounded,
-                        title: '隐私政策',
-                        subtitle: '了解我们如何保护您的信息',
+                        title: '闅愮鏀跨瓥',
+                        subtitle: '浜嗚В鎴戜滑濡備綍淇濇姢鎮ㄧ殑淇℃伅',
                         onTap: _openPrivacyPolicy,
                       ),
                       ProfileMenuItemData(
                         icon: Icons.fact_check_outlined,
-                        title: '免责声明',
-                        subtitle: '使用前请阅读重要说明',
+                        title: '鍏嶈矗澹版槑',
+                        subtitle: '浣跨敤鍓嶈闃呰閲嶈璇存槑',
                         onTap: _openDisclaimer,
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   ProfileMenuGroup(
-                    title: '其他',
+                    title: '鍏朵粬',
                     items: [
                       ProfileMenuItemData(
+                        icon: Icons.password_rounded,
+                        title: '淇敼瀵嗙爜',
+                        subtitle: '閫氳繃鎵嬫満鍙烽獙璇佺爜閲嶇疆',
+                        onTap: _openPasswordReset,
+                      ),
+                      ProfileMenuItemData(
+                        icon: Icons.ios_share_rounded,
+                        title: '分享ID',
+                        subtitle: '复制推荐码，好友注册后奖励10次抽卡',
+                        onTap: _sharePublicId,
+                      ),
+                      ProfileMenuItemData(
                         icon: Icons.chat_bubble_outline_rounded,
-                        title: '联系我们',
-                        subtitle: '意见反馈与客服支持',
+                        title: '鑱旂郴鎴戜滑',
+                        subtitle: '鎰忚鍙嶉涓庡鏈嶆敮鎸?,
                         onTap: _openContactUs,
                       ),
                       ProfileMenuItemData(
                         icon: Icons.add_circle_outline_rounded,
-                        title: '版本信息',
-                        subtitle: '当前版本 1.0.0',
+                        title: '鐗堟湰淇℃伅',
+                        subtitle: '褰撳墠鐗堟湰 1.0.0',
                         onTap: _openVersionInfo,
                       ),
                     ],
@@ -309,7 +353,9 @@ class ProfileHeader extends StatelessWidget {
     required this.errorMessage,
     required this.loading,
     required this.isLoggedIn,
+    required this.isGuest,
     required this.onLogin,
+    required this.onGuest,
     required this.onEdit,
   });
 
@@ -318,7 +364,9 @@ class ProfileHeader extends StatelessWidget {
   final String? errorMessage;
   final bool loading;
   final bool isLoggedIn;
+  final bool isGuest;
   final VoidCallback onLogin;
+  final VoidCallback onGuest;
   final VoidCallback onEdit;
 
   @override
@@ -339,7 +387,7 @@ class ProfileHeader extends StatelessWidget {
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: isLoggedIn ? null : onLogin,
+                        onTap: isLoggedIn || isGuest ? null : onLogin,
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -357,7 +405,44 @@ class ProfileHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(
+                    if (!isLoggedIn && !isGuest) ...[
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: loading ? null : onGuest,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFC47BFF),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        child: const Text('娓稿璁块棶'),
+                      ),
+                    ],
+                    if (isGuest) ...[
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: loading ? null : onLogin,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFC47BFF),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        child: const Text('鐧诲綍璐﹀彿'),
+                      ),
+                    ],
+                    if (isLoggedIn)
+                      SizedBox(
                       width: 30,
                       height: 30,
                       child: IconButton(
@@ -366,7 +451,7 @@ class ProfileHeader extends StatelessWidget {
                         iconSize: 16,
                         color: const Color(0xFFDCA6FF),
                         padding: EdgeInsets.zero,
-                        tooltip: '修改昵称',
+                        tooltip: '淇敼鏄电О',
                       ),
                     ),
                   ],
@@ -404,6 +489,181 @@ class ProfileHeader extends StatelessWidget {
   }
 }
 
+class PasswordResetDialog extends StatefulWidget {
+  const PasswordResetDialog({super.key, required this.apiClient});
+
+  final ApiClient apiClient;
+
+  @override
+  State<PasswordResetDialog> createState() => _PasswordResetDialogState();
+}
+
+class _PasswordResetDialogState extends State<PasswordResetDialog> {
+  final _phoneController = TextEditingController();
+  final _codeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  Timer? _timer;
+  var _countdown = 0;
+  var _sendingCode = false;
+  var _saving = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _phoneController.dispose();
+    _codeController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = '璇疯緭鍏ユ墜鏈哄彿');
+      return;
+    }
+    if (_sendingCode || _countdown > 0) return;
+
+    setState(() {
+      _sendingCode = true;
+      _errorMessage = null;
+    });
+    try {
+      await widget.apiClient.sendPasswordResetSmsCode(phone: phone);
+      if (!mounted) return;
+      setState(() => _countdown = 60);
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_countdown <= 1) {
+          timer.cancel();
+          setState(() => _countdown = 0);
+          return;
+        }
+        setState(() => _countdown -= 1);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _sendingCode = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final phone = _phoneController.text.trim();
+    final code = _codeController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    if (phone.isEmpty || code.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      setState(() => _errorMessage = '璇峰畬鏁村～鍐欎俊鎭?);
+      return;
+    }
+    if (password != confirmPassword) {
+      setState(() => _errorMessage = '涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷?);
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
+    try {
+      await widget.apiClient.resetPassword(
+        phone: phone,
+        code: code,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('瀵嗙爜宸蹭慨鏀癸紝璇蜂娇鐢ㄦ柊瀵嗙爜鐧诲綍')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF15162C),
+      title: const Text('淇敼瀵嗙爜', style: TextStyle(color: Colors.white)),
+      content: SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: '鎵嬫満鍙?),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '楠岃瘉鐮?),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: _sendingCode || _countdown > 0 ? null : _sendCode,
+                  child: Text(
+                    _countdown > 0 ? '${_countdown}s' : (_sendingCode ? '鍙戦€佷腑' : '鑾峰彇楠岃瘉鐮?),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: '鏂板瘑鐮?),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: '纭鏂板瘑鐮?),
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Color(0xFFFF9BA6), fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('鍙栨秷'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _resetPassword,
+          child: Text(_saving ? '淇濆瓨涓? : '淇濆瓨'),
+        ),
+      ],
+    );
+  }
+}
+
 class ProfileLogoutButton extends StatelessWidget {
   const ProfileLogoutButton({super.key, required this.onPressed});
 
@@ -417,7 +677,7 @@ class ProfileLogoutButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: const Icon(Icons.logout_rounded, size: 18),
-        label: const Text('退出登录'),
+        label: const Text('閫€鍑虹櫥褰?),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFFFA0A8),
           side: const BorderSide(color: Color(0x66FFA0A8)),
@@ -635,11 +895,11 @@ class PrivacyPolicyPage extends StatelessWidget {
                                     size: 34,
                                   ),
                                   color: Colors.white,
-                                  tooltip: '返回',
+                                  tooltip: '杩斿洖',
                                 ),
                               ),
                               const Text(
-                                '隐私政策',
+                                '闅愮鏀跨瓥',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -675,7 +935,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                                   letterSpacing: 0,
                                 ),
                               ),
-                              child: const Text('同意并返回'),
+                              child: const Text('鍚屾剰骞惰繑鍥?),
                             ),
                           ),
                         ),
@@ -709,7 +969,7 @@ class PrivacyPolicyContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率隐私政策',
+            '蹇冭薄棰戠巼闅愮鏀跨瓥',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -719,26 +979,26 @@ class PrivacyPolicyContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2024年05月20日'),
+          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2024年05月20日'),
+          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 22),
-          Text('我们非常重视您的个人信息保护，并致力于保护您的隐私安全。'),
+          Text('鎴戜滑闈炲父閲嶈鎮ㄧ殑涓汉淇℃伅淇濇姢锛屽苟鑷村姏浜庝繚鎶ゆ偍鐨勯殣绉佸畨鍏ㄣ€?),
           SizedBox(height: 20),
           _PolicySection(
-            title: '1. 我们收集的信息',
+            title: '1. 鎴戜滑鏀堕泦鐨勪俊鎭?,
             paragraphs: [
-              '1.1 账号信息：包括用户ID、昵称、头像、性别、生日等。',
-              '1.2 设备信息：包括设备型号、操作系统版本、应用版本、设备标识符等。',
-              '1.3 使用信息：包括拍卡记录、角色收藏记录、NFC绑定记录、互动记录、浏览记录等。',
-              '1.4 用户上传内容：包括头像、语音、自定义角色形象、用户反馈信息等。',
+              '1.1 璐﹀彿淇℃伅锛氬寘鎷敤鎴稩D銆佹樀绉般€佸ご鍍忋€佹€у埆銆佺敓鏃ョ瓑銆?,
+              '1.2 璁惧淇℃伅锛氬寘鎷澶囧瀷鍙枫€佹搷浣滅郴缁熺増鏈€佸簲鐢ㄧ増鏈€佽澶囨爣璇嗙绛夈€?,
+              '1.3 浣跨敤淇℃伅锛氬寘鎷媿鍗¤褰曘€佽鑹叉敹钘忚褰曘€丯FC缁戝畾璁板綍銆佷簰鍔ㄨ褰曘€佹祻瑙堣褰曠瓑銆?,
+              '1.4 鐢ㄦ埛涓婁紶鍐呭锛氬寘鎷ご鍍忋€佽闊炽€佽嚜瀹氫箟瑙掕壊褰㈣薄銆佺敤鎴峰弽棣堜俊鎭瓑銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '2. 我们如何使用信息',
+            title: '2. 鎴戜滑濡備綍浣跨敤淇℃伅',
             paragraphs: [
-              '用于登录认证、账号安全、服务展示、资产绑定、礼物互动、客户支持与产品体验优化。',
+              '鐢ㄤ簬鐧诲綍璁よ瘉銆佽处鍙峰畨鍏ㄣ€佹湇鍔″睍绀恒€佽祫浜х粦瀹氥€佺ぜ鐗╀簰鍔ㄣ€佸鎴锋敮鎸佷笌浜у搧浣撻獙浼樺寲銆?,
             ],
           ),
         ],
@@ -764,7 +1024,7 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率隐私政策',
+            '蹇冭薄棰戠巼闅愮鏀跨瓥',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -774,66 +1034,66 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2026年6月6日'),
+          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2026年6月6日'),
+          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 22),
-          Text('我们非常重视您的个人信息保护。'),
+          Text('鎴戜滑闈炲父閲嶈鎮ㄧ殑涓汉淇℃伅淇濇姢銆?),
           SizedBox(height: 20),
           _PolicySection(
-            title: '我们收集的信息',
+            title: '鎴戜滑鏀堕泦鐨勪俊鎭?,
             paragraphs: [
-              '账号信息',
-              '用户ID',
-              '昵称',
-              '头像',
-              '设备信息',
-              '设备型号',
-              '操作系统版本',
-              '应用版本',
-              '使用信息',
-              '抽卡记录',
-              '角色收藏记录',
-              'NFC绑定记录',
-              '互动记录',
-              '用户上传内容',
-              '头像',
-              '自定义语音',
-              '用户反馈信息',
+              '璐﹀彿淇℃伅',
+              '鐢ㄦ埛ID',
+              '鏄电О',
+              '澶村儚',
+              '璁惧淇℃伅',
+              '璁惧鍨嬪彿',
+              '鎿嶄綔绯荤粺鐗堟湰',
+              '搴旂敤鐗堟湰',
+              '浣跨敤淇℃伅',
+              '鎶藉崱璁板綍',
+              '瑙掕壊鏀惰棌璁板綍',
+              'NFC缁戝畾璁板綍',
+              '浜掑姩璁板綍',
+              '鐢ㄦ埛涓婁紶鍐呭',
+              '澶村儚',
+              '鑷畾涔夎闊?,
+              '鐢ㄦ埛鍙嶉淇℃伅',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '我们如何使用信息',
+            title: '鎴戜滑濡備綍浣跨敤淇℃伅',
             paragraphs: [
-              '用于：',
-              '提供服务',
-              '保存角色数据',
-              '提升产品体验',
-              '风险控制',
+              '鐢ㄤ簬锛?,
+              '鎻愪緵鏈嶅姟',
+              '淇濆瓨瑙掕壊鏁版嵁',
+              '鎻愬崌浜у搧浣撻獙',
+              '椋庨櫓鎺у埗',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '权限说明',
+            title: '鏉冮檺璇存槑',
             paragraphs: [
-              '可能申请以下权限：',
-              '麦克风权限',
-              '用于录制角色互动语音。',
-              '相册权限',
-              '用于上传头像图片。',
-              '相机权限',
-              '用于拍摄头像或上传照片。',
-              'NFC权限',
-              '用于识别和绑定实体角色贴纸。',
+              '鍙兘鐢宠浠ヤ笅鏉冮檺锛?,
+              '楹﹀厠椋庢潈闄?,
+              '鐢ㄤ簬褰曞埗瑙掕壊浜掑姩璇煶銆?,
+              '鐩稿唽鏉冮檺',
+              '鐢ㄤ簬涓婁紶澶村儚鍥剧墖銆?,
+              '鐩告満鏉冮檺',
+              '鐢ㄤ簬鎷嶆憚澶村儚鎴栦笂浼犵収鐗囥€?,
+              'NFC鏉冮檺',
+              '鐢ㄤ簬璇嗗埆鍜岀粦瀹氬疄浣撹鑹茶创绾搞€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '信息存储',
+            title: '淇℃伅瀛樺偍',
             paragraphs: [
-              '用户数据将通过加密方式进行存储。',
-              '未经用户同意不会向第三方出售个人信息。',
+              '鐢ㄦ埛鏁版嵁灏嗛€氳繃鍔犲瘑鏂瑰紡杩涜瀛樺偍銆?,
+              '鏈粡鐢ㄦ埛鍚屾剰涓嶄細鍚戠涓夋柟鍑哄敭涓汉淇℃伅銆?,
             ],
           ),
         ],
@@ -895,11 +1155,11 @@ class UserAgreementPage extends StatelessWidget {
                                     size: 34,
                                   ),
                                   color: Colors.white,
-                                  tooltip: '返回',
+                                  tooltip: '杩斿洖',
                                 ),
                               ),
                               const Text(
-                                '用户协议',
+                                '鐢ㄦ埛鍗忚',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -935,7 +1195,7 @@ class UserAgreementPage extends StatelessWidget {
                                   letterSpacing: 0,
                                 ),
                               ),
-                              child: const Text('同意并返回'),
+                              child: const Text('鍚屾剰骞惰繑鍥?),
                             ),
                           ),
                         ),
@@ -969,7 +1229,7 @@ class UserAgreementContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率用户协议',
+            '蹇冭薄棰戠巼鐢ㄦ埛鍗忚',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -979,28 +1239,28 @@ class UserAgreementContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2024年05月20日'),
+          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2024年05月20日'),
+          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 22),
-          Text('欢迎使用心象频率！'),
+          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼锛?),
           SizedBox(height: 8),
-          Text('当您注册、登录或使用本应用时，即视为已阅读并同意本协议的全部内容。'),
+          Text('褰撴偍娉ㄥ唽銆佺櫥褰曟垨浣跨敤鏈簲鐢ㄦ椂锛屽嵆瑙嗕负宸查槄璇诲苟鍚屾剰鏈崗璁殑鍏ㄩ儴鍐呭銆?),
           SizedBox(height: 20),
           _PolicySection(
-            title: '1. 账号规则',
+            title: '1. 璐﹀彿瑙勫垯',
             paragraphs: [
-              '1.1 用户应保证注册信息真实、准确、合法有效。',
-              '1.2 用户不得以任何方式冒充他人或虚构身份进行注册。',
-              '1.3 用户不得利用本应用从事违法违规、侵害他人权益或干扰平台正常运营的行为。',
+              '1.1 鐢ㄦ埛搴斾繚璇佹敞鍐屼俊鎭湡瀹炪€佸噯纭€佸悎娉曟湁鏁堛€?,
+              '1.2 鐢ㄦ埛涓嶅緱浠ヤ换浣曟柟寮忓啋鍏呬粬浜烘垨铏氭瀯韬唤杩涜娉ㄥ唽銆?,
+              '1.3 鐢ㄦ埛涓嶅緱鍒╃敤鏈簲鐢ㄤ粠浜嬭繚娉曡繚瑙勩€佷镜瀹充粬浜烘潈鐩婃垨骞叉壈骞冲彴姝ｅ父杩愯惀鐨勮涓恒€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '2. 虚拟内容说明',
+            title: '2. 铏氭嫙鍐呭璇存槑',
             paragraphs: [
-              '2.1 应用内的角色、道具、影像、贴纸等均为虚拟数字内容，用户获得的是使用权而非所有权。',
-              '2.2 平台有权在法律允许的范围内对虚拟内容进行调整、更新下线。',
+              '2.1 搴旂敤鍐呯殑瑙掕壊銆侀亾鍏枫€佸奖鍍忋€佽创绾哥瓑鍧囦负铏氭嫙鏁板瓧鍐呭锛岀敤鎴疯幏寰楃殑鏄娇鐢ㄦ潈鑰岄潪鎵€鏈夋潈銆?,
+              '2.2 骞冲彴鏈夋潈鍦ㄦ硶寰嬪厑璁哥殑鑼冨洿鍐呭铏氭嫙鍐呭杩涜璋冩暣銆佹洿鏂颁笅绾裤€?,
             ],
           ),
         ],
@@ -1026,7 +1286,7 @@ class UpdatedUserAgreementContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率用户协议',
+            '蹇冭薄棰戠巼鐢ㄦ埛鍗忚',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -1036,62 +1296,62 @@ class UpdatedUserAgreementContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2026年6月6日'),
+          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2026年6月6日'),
+          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 22),
-          Text('欢迎使用心象频率。'),
+          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼銆?),
           SizedBox(height: 12),
-          Text('当您注册、登录或使用本应用时，即视为已阅读并同意本协议。'),
+          Text('褰撴偍娉ㄥ唽銆佺櫥褰曟垨浣跨敤鏈簲鐢ㄦ椂锛屽嵆瑙嗕负宸查槄璇诲苟鍚屾剰鏈崗璁€?),
           SizedBox(height: 20),
           _PolicySection(
-            title: '账号规则',
+            title: '璐﹀彿瑙勫垯',
             paragraphs: [
-              '用户应保证注册信息真实合法。',
-              '不得：',
-              '冒充他人',
-              '发布违法内容',
-              '利用系统进行骚扰',
+              '鐢ㄦ埛搴斾繚璇佹敞鍐屼俊鎭湡瀹炲悎娉曘€?,
+              '涓嶅緱锛?,
+              '鍐掑厖浠栦汉',
+              '鍙戝竷杩濇硶鍐呭',
+              '鍒╃敤绯荤粺杩涜楠氭壈',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '虚拟内容',
+            title: '铏氭嫙鍐呭',
             paragraphs: [
-              '应用内角色、道具、抽卡奖励等均属于虚拟数字内容。',
-              '用户获得的是使用权而非所有权。',
+              '搴旂敤鍐呰鑹层€侀亾鍏枫€佹娊鍗″鍔辩瓑鍧囧睘浜庤櫄鎷熸暟瀛楀唴瀹广€?,
+              '鐢ㄦ埛鑾峰緱鐨勬槸浣跨敤鏉冭€岄潪鎵€鏈夋潈銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '抽卡规则',
+            title: '鎶藉崱瑙勫垯',
             paragraphs: [
-              '抽卡结果由概率机制随机生成。',
-              '用户理解并接受随机结果。',
-              '运营方不会承诺获得指定角色。',
+              '鎶藉崱缁撴灉鐢辨鐜囨満鍒堕殢鏈虹敓鎴愩€?,
+              '鐢ㄦ埛鐞嗚В骞舵帴鍙楅殢鏈虹粨鏋溿€?,
+              '杩愯惀鏂逛笉浼氭壙璇鸿幏寰楁寚瀹氳鑹层€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '用户生成内容',
+            title: '鐢ㄦ埛鐢熸垚鍐呭',
             paragraphs: [
-              '用户上传的头像、昵称、语音等内容应合法合规。',
-              '用户应保证拥有相关内容使用权。',
+              '鐢ㄦ埛涓婁紶鐨勫ご鍍忋€佹樀绉般€佽闊崇瓑鍐呭搴斿悎娉曞悎瑙勩€?,
+              '鐢ㄦ埛搴斾繚璇佹嫢鏈夌浉鍏冲唴瀹逛娇鐢ㄦ潈銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '服务变更',
+            title: '鏈嶅姟鍙樻洿',
             paragraphs: [
-              '运营方有权根据业务发展调整功能、活动和运营规则。',
+              '杩愯惀鏂规湁鏉冩牴鎹笟鍔″彂灞曡皟鏁村姛鑳姐€佹椿鍔ㄥ拰杩愯惀瑙勫垯銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '协议修改',
+            title: '鍗忚淇敼',
             paragraphs: [
-              '运营方有权对本协议进行更新。',
-              '更新后继续使用即视为同意。',
+              '杩愯惀鏂规湁鏉冨鏈崗璁繘琛屾洿鏂般€?,
+              '鏇存柊鍚庣户缁娇鐢ㄥ嵆瑙嗕负鍚屾剰銆?,
             ],
           ),
         ],
@@ -1106,7 +1366,7 @@ class DisclaimerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LegalShell(
-      title: '免责声明',
+      title: '鍏嶈矗澹版槑',
       bottom: GradientReturnButton(onPressed: () => Navigator.of(context).pop()),
       child: const UpdatedDisclaimerContent(),
     );
@@ -1130,7 +1390,7 @@ class DisclaimerContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率免责声明',
+            '蹇冭薄棰戠巼鍏嶈矗澹版槑',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -1140,30 +1400,30 @@ class DisclaimerContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2024年05月20日'),
+          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2024年05月20日'),
+          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
           SizedBox(height: 22),
-          Text('请您在使用本应用前，仔细阅读本免责声明。'),
+          Text('璇锋偍鍦ㄤ娇鐢ㄦ湰搴旂敤鍓嶏紝浠旂粏闃呰鏈厤璐ｅ０鏄庛€?),
           SizedBox(height: 20),
           _PolicySection(
-            title: '1. AI内容说明',
+            title: '1. AI鍐呭璇存槑',
             paragraphs: [
-              '本应用所有展示的对话、建议、测试结果及角色互动内容均由AI智能生成，相关内容仅供参考，不代表专业意见。',
+              '鏈簲鐢ㄦ墍鏈夊睍绀虹殑瀵硅瘽銆佸缓璁€佹祴璇曠粨鏋滃強瑙掕壊浜掑姩鍐呭鍧囩敱AI鏅鸿兘鐢熸垚锛岀浉鍏冲唴瀹逛粎渚涘弬鑰冿紝涓嶄唬琛ㄤ笓涓氭剰瑙併€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '2. 非专业服务声明',
+            title: '2. 闈炰笓涓氭湇鍔″０鏄?,
             paragraphs: [
-              '本应用不提供以下服务：医疗服务、心理咨询服务、法律服务、投资理财服务，用户不应依赖本应用内容作出重大决策。',
+              '鏈簲鐢ㄤ笉鎻愪緵浠ヤ笅鏈嶅姟锛氬尰鐤楁湇鍔°€佸績鐞嗗挩璇㈡湇鍔°€佹硶寰嬫湇鍔°€佹姇璧勭悊璐㈡湇鍔★紝鐢ㄦ埛涓嶅簲渚濊禆鏈簲鐢ㄥ唴瀹逛綔鍑洪噸澶у喅绛栥€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '3. 测试结果说明',
+            title: '3. 娴嬭瘯缁撴灉璇存槑',
             paragraphs: [
-              '应用中的人格测试、恋爱测试、性格测试等功能仅供娱乐参考，测试结果不构成心理诊断依据。',
+              '搴旂敤涓殑浜烘牸娴嬭瘯銆佹亱鐖辨祴璇曘€佹€ф牸娴嬭瘯绛夊姛鑳戒粎渚涘ū涔愬弬鑰冿紝娴嬭瘯缁撴灉涓嶆瀯鎴愬績鐞嗚瘖鏂緷鎹€?,
             ],
           ),
         ],
@@ -1189,7 +1449,7 @@ class UpdatedDisclaimerContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '心象频率免责声明',
+            '蹇冭薄棰戠巼鍏嶈矗澹版槑',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -1199,56 +1459,56 @@ class UpdatedDisclaimerContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('更新日期：2026年6月6日'),
+          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 2),
-          Text('生效日期：2026年6月6日'),
+          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
           SizedBox(height: 22),
-          Text('欢迎使用心象频率。'),
+          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼銆?),
           SizedBox(height: 12),
           Text(
-            '本应用中的角色形象、对话内容、互动视频、抽卡测试、人格测试等内容均由系统生成或整理，仅供娱乐、陪伴及社交体验使用。',
+            '鏈簲鐢ㄤ腑鐨勮鑹插舰璞°€佸璇濆唴瀹广€佷簰鍔ㄨ棰戙€佹娊鍗℃祴璇曘€佷汉鏍兼祴璇曠瓑鍐呭鍧囩敱绯荤粺鐢熸垚鎴栨暣鐞嗭紝浠呬緵濞变箰銆侀櫔浼村強绀句氦浣撻獙浣跨敤銆?,
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: 'AI内容说明',
+            title: 'AI鍐呭璇存槑',
             paragraphs: [
-              '本应用所展示的对话、建议、测试结果及角色互动内容均由人工智能生成。',
-              '相关内容仅供参考，不代表专业意见。',
+              '鏈簲鐢ㄦ墍灞曠ず鐨勫璇濄€佸缓璁€佹祴璇曠粨鏋滃強瑙掕壊浜掑姩鍐呭鍧囩敱浜哄伐鏅鸿兘鐢熸垚銆?,
+              '鐩稿叧鍐呭浠呬緵鍙傝€冿紝涓嶄唬琛ㄤ笓涓氭剰瑙併€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '非专业服务声明',
+            title: '闈炰笓涓氭湇鍔″０鏄?,
             paragraphs: [
-              '本应用不提供：',
-              '医疗服务',
-              '心理咨询服务',
-              '法律服务',
-              '投资理财服务',
-              '用户不应依据应用内容作出重大决策。',
+              '鏈簲鐢ㄤ笉鎻愪緵锛?,
+              '鍖荤枟鏈嶅姟',
+              '蹇冪悊鍜ㄨ鏈嶅姟',
+              '娉曞緥鏈嶅姟',
+              '鎶曡祫鐞嗚储鏈嶅姟',
+              '鐢ㄦ埛涓嶅簲渚濇嵁搴旂敤鍐呭浣滃嚭閲嶅ぇ鍐崇瓥銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '测试结果说明',
+            title: '娴嬭瘯缁撴灉璇存槑',
             paragraphs: [
-              '应用中的人格测试、恋爱测试、性格测试等功能仅供娱乐参考。',
-              '测试结果不构成心理诊断依据。',
+              '搴旂敤涓殑浜烘牸娴嬭瘯銆佹亱鐖辨祴璇曘€佹€ф牸娴嬭瘯绛夊姛鑳戒粎渚涘ū涔愬弬鑰冦€?,
+              '娴嬭瘯缁撴灉涓嶆瀯鎴愬績鐞嗚瘖鏂緷鎹€?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '虚拟角色说明',
+            title: '铏氭嫙瑙掕壊璇存槑',
             paragraphs: [
-              '应用中的角色均为虚拟角色。',
-              '其言论、行为和观点不代表运营方立场。',
+              '搴旂敤涓殑瑙掕壊鍧囦负铏氭嫙瑙掕壊銆?,
+              '鍏惰█璁恒€佽涓哄拰瑙傜偣涓嶄唬琛ㄨ繍钀ユ柟绔嬪満銆?,
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '用户责任',
+            title: '鐢ㄦ埛璐ｄ换',
             paragraphs: [
-              '用户应自行判断并承担使用本应用产生的相关风险和后果。',
+              '鐢ㄦ埛搴旇嚜琛屽垽鏂苟鎵挎媴浣跨敤鏈簲鐢ㄤ骇鐢熺殑鐩稿叧椋庨櫓鍜屽悗鏋溿€?,
             ],
           ),
         ],
@@ -1263,7 +1523,7 @@ class VersionInfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LegalShell(
-      title: '版本信息',
+      title: '鐗堟湰淇℃伅',
       showBottomPadding: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1274,7 +1534,7 @@ class VersionInfoPage extends StatelessWidget {
           SizedBox(height: 150),
           Center(
             child: Text(
-              'Copyright © 2026 心象频率\n保留所有权利',
+              'Copyright 漏 2026 蹇冭薄棰戠巼\n淇濈暀鎵€鏈夋潈鍒?,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF8E91B4),
@@ -1308,7 +1568,7 @@ class VersionHero extends StatelessWidget {
                 children: [
                   const Flexible(
                     child: Text(
-                      '心象频率',
+                      '蹇冭薄棰戠巼',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1343,7 +1603,7 @@ class VersionHero extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                '当前已是最新版本',
+                '褰撳墠宸叉槸鏈€鏂扮増鏈?,
                 style: TextStyle(
                   color: Color(0xFFC4C7E1),
                   fontSize: 14,
@@ -1376,18 +1636,18 @@ class VersionInfoCard extends StatelessWidget {
         children: [
           VersionInfoRow(
             icon: Icons.workspace_premium_outlined,
-            label: '当前版本',
+            label: '褰撳墠鐗堟湰',
             value: 'v1.0.0',
           ),
           Divider(height: 32, color: Color(0x332C365B)),
           VersionInfoRow(
             icon: Icons.calendar_month_outlined,
-            label: '更新日期',
+            label: '鏇存柊鏃ユ湡',
             value: '2026-06-02',
           ),
           Divider(height: 32, color: Color(0x332C365B)),
           Text(
-            '更新内容',
+            '鏇存柊鍐呭',
             style: TextStyle(
               color: Color(0xFFE9EAFF),
               fontSize: 15,
@@ -1397,12 +1657,12 @@ class VersionInfoCard extends StatelessWidget {
           ),
           SizedBox(height: 22),
           Text(
-            'v1.0.0  首次上线\n\n'
-            '• 支持角色抽取\n\n'
-            '• 支持NFC角色绑定\n\n'
-            '• 支持互动视频\n\n'
-            '• 支持人格测试\n\n'
-            '• 优化用户体验，修复已知问题',
+            'v1.0.0  棣栨涓婄嚎\n\n'
+            '鈥?鏀寔瑙掕壊鎶藉彇\n\n'
+            '鈥?鏀寔NFC瑙掕壊缁戝畾\n\n'
+            '鈥?鏀寔浜掑姩瑙嗛\n\n'
+            '鈥?鏀寔浜烘牸娴嬭瘯\n\n'
+            '鈥?浼樺寲鐢ㄦ埛浣撻獙锛屼慨澶嶅凡鐭ラ棶棰?,
             style: TextStyle(
               color: Color(0xFFD9DCF2),
               fontSize: 15,
@@ -1466,7 +1726,7 @@ class ContactUsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LegalShell(
-      title: '联系我们',
+      title: '鑱旂郴鎴戜滑',
       showBottomPadding: false,
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1475,28 +1735,28 @@ class ContactUsPage extends StatelessWidget {
           SizedBox(height: 12),
           ContactMethodCard(
             icon: Icons.headset_mic_outlined,
-            title: '客服电话',
+            title: '瀹㈡湇鐢佃瘽',
             value: 'tgxe123@126.com',
-            subtitle: '工作日 9:00–18:00',
+            subtitle: '宸ヤ綔鏃?9:00鈥?8:00',
           ),
           SizedBox(height: 8),
           ContactMethodCard(
             icon: Icons.mail_outline_rounded,
-            title: '客服邮箱',
+            title: '瀹㈡湇閭',
             value: 'tgxe123@126.com',
-            subtitle: '24小时内回复',
+            subtitle: '24灏忔椂鍐呭洖澶?,
           ),
           SizedBox(height: 8),
           ContactMethodCard(
             icon: Icons.business_center_outlined,
-            title: '商务合作',
+            title: '鍟嗗姟鍚堜綔',
             value: 'tgxe123@126.com',
-            subtitle: '欢迎合作洽谈',
+            subtitle: '娆㈣繋鍚堜綔娲借皥',
           ),
           SizedBox(height: 72),
           Center(
             child: Text(
-              '感谢您的支持与信任 ♡',
+              '鎰熻阿鎮ㄧ殑鏀寔涓庝俊浠?鈾?,
               style: TextStyle(
                 color: Color(0xFF979ABC),
                 fontSize: 14,
@@ -1517,7 +1777,7 @@ class UpdatedContactUsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LegalShell(
-      title: '联系我们',
+      title: '鑱旂郴鎴戜滑',
       showBottomPadding: false,
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1528,14 +1788,14 @@ class UpdatedContactUsPage extends StatelessWidget {
           SizedBox(height: 8),
           ContactMethodCard(
             icon: Icons.business_center_outlined,
-            title: '商务合作',
+            title: '鍟嗗姟鍚堜綔',
             value: '13761318177',
-            subtitle: '欢迎合作洽谈',
+            subtitle: '娆㈣繋鍚堜綔娲借皥',
           ),
           SizedBox(height: 72),
           Center(
             child: Text(
-              '感谢您的支持与信任',
+              '鎰熻阿鎮ㄧ殑鏀寔涓庝俊浠?,
               style: TextStyle(
                 color: Color(0xFF979ABC),
                 fontSize: 14,
@@ -1570,7 +1830,7 @@ class CustomerWechatCard extends StatelessWidget {
               Icon(Icons.qr_code_2_rounded, color: Color(0xFFC9A6FF), size: 24),
               SizedBox(width: 12),
               Text(
-                '客服微信',
+                '瀹㈡湇寰俊',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 17,
@@ -1592,7 +1852,7 @@ class CustomerWechatCard extends StatelessWidget {
                   height: 260,
                   child: Center(
                     child: Text(
-                      '请添加客服微信二维码图片',
+                      '璇锋坊鍔犲鏈嶅井淇′簩缁寸爜鍥剧墖',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFF9CA4C6),
@@ -1633,7 +1893,7 @@ class ContactHeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '有问题？联系我们',
+                  '鏈夐棶棰橈紵鑱旂郴鎴戜滑',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -1643,7 +1903,7 @@ class ContactHeroCard extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  '我们会尽快为您处理',
+                  '鎴戜滑浼氬敖蹇负鎮ㄥ鐞?,
                   style: TextStyle(
                     color: Color(0xFFD2D1E9),
                     fontSize: 16,
@@ -1810,7 +2070,7 @@ class LegalShell extends StatelessWidget {
                                     size: 34,
                                   ),
                                   color: Colors.white,
-                                  tooltip: '返回',
+                                  tooltip: '杩斿洖',
                                 ),
                               ),
                               Text(
@@ -1871,7 +2131,7 @@ class GradientReturnButton extends StatelessWidget {
           ),
         ),
         child: const Text(
-          '同意并返回',
+          '鍚屾剰骞惰繑鍥?,
           style: TextStyle(
             color: Colors.white,
             fontSize: 15,

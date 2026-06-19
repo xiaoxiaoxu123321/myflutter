@@ -50,9 +50,10 @@ class _LoginPageState extends State<LoginPage> {
     var loginSucceeded = false;
     try {
       final data = await _apiClient.login(username: username, password: password);
-      AuthSession.isLoggedIn = true;
-      AuthSession.token = data['token'] as String?;
-      AuthSession.user = data['user'] as Map<String, dynamic>?;
+      AuthSession.enterUserMode(
+        authToken: data['token'] as String?,
+        currentUser: data['user'] as Map<String, dynamic>?,
+      );
       loginSucceeded = true;
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -201,23 +202,6 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 30),
-                            const DividerWithText(text: '其他方式登录'),
-                            const SizedBox(height: 18),
-                            const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SocialLoginButton(
-                                  icon: Icons.wechat_rounded,
-                                  label: '微信',
-                                ),
-                                SizedBox(width: 42),
-                                SocialLoginButton(
-                                  icon: Icons.apple_rounded,
-                                  label: 'Apple',
-                                ),
-                              ],
                             ),
                             const SizedBox(height: 28),
                             Row(
@@ -391,9 +375,10 @@ class _RegisterPageState extends State<RegisterPage> {
         confirmPassword: confirmPassword,
         referralCode: referralCode.isEmpty ? null : referralCode,
       );
-      AuthSession.isLoggedIn = true;
-      AuthSession.token = data['token'] as String?;
-      AuthSession.user = data['user'] as Map<String, dynamic>?;
+      AuthSession.enterUserMode(
+        authToken: data['token'] as String?,
+        currentUser: data['user'] as Map<String, dynamic>?,
+      );
       registerSucceeded = true;
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -806,58 +791,6 @@ class LoginInput extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class DividerWithText extends StatelessWidget {
-  const DividerWithText({super.key, required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Color(0xFF2C2443))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            text,
-            style: const TextStyle(color: Color(0xFF8E82A4), fontSize: 12),
-          ),
-        ),
-        const Expanded(child: Divider(color: Color(0xFF2C2443))),
-      ],
-    );
-  }
-}
-
-class SocialLoginButton extends StatelessWidget {
-  const SocialLoginButton({super.key, required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: Color(0xFF222038),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-        const SizedBox(height: 7),
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xFFD6CDE8), fontSize: 12),
-        ),
-      ],
     );
   }
 }
