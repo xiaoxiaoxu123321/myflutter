@@ -522,7 +522,7 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
   Future<void> _sendCode() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      setState(() => _errorMessage = '璇疯緭鍏ユ墜鏈哄彿');
+      setState(() => _errorMessage = '请输入手机号');
       return;
     }
     if (_sendingCode || _countdown > 0) return;
@@ -562,11 +562,11 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
     if (phone.isEmpty || code.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      setState(() => _errorMessage = '璇峰畬鏁村～鍐欎俊鎭?);
+      setState(() => _errorMessage = '请完整填写信息');
       return;
     }
     if (password != confirmPassword) {
-      setState(() => _errorMessage = '涓ゆ杈撳叆鐨勫瘑鐮佷笉涓€鑷?);
+      setState(() => _errorMessage = '两次输入的密码不一致');
       return;
     }
 
@@ -584,7 +584,7 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('瀵嗙爜宸蹭慨鏀癸紝璇蜂娇鐢ㄦ柊瀵嗙爜鐧诲綍')),
+        const SnackBar(content: Text('密码已修改，请使用新密码登录')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -598,7 +598,7 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: const Color(0xFF15162C),
-      title: const Text('淇敼瀵嗙爜', style: TextStyle(color: Colors.white)),
+      title: const Text('修改密码', style: TextStyle(color: Colors.white)),
       content: SizedBox(
         width: 320,
         child: Column(
@@ -607,7 +607,7 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
             TextField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: '鎵嬫満鍙?),
+              decoration: const InputDecoration(labelText: '手机号'),
             ),
             const SizedBox(height: 10),
             Row(
@@ -616,14 +616,14 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
                   child: TextField(
                     controller: _codeController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: '楠岃瘉鐮?),
+                    decoration: const InputDecoration(labelText: '验证码'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 TextButton(
                   onPressed: _sendingCode || _countdown > 0 ? null : _sendCode,
                   child: Text(
-                    _countdown > 0 ? '${_countdown}s' : (_sendingCode ? '鍙戦€佷腑' : '鑾峰彇楠岃瘉鐮?),
+                    _countdown > 0 ? '${_countdown}s' : (_sendingCode ? '发送中' : '获取验证码'),
                   ),
                 ),
               ],
@@ -632,13 +632,13 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: '鏂板瘑鐮?),
+              decoration: const InputDecoration(labelText: '新密码'),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _confirmPasswordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: '纭鏂板瘑鐮?),
+              decoration: const InputDecoration(labelText: '确认新密码'),
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
@@ -653,11 +653,11 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('鍙栨秷'),
+          child: const Text('取消'),
         ),
         FilledButton(
           onPressed: _saving ? null : _resetPassword,
-          child: Text(_saving ? '淇濆瓨涓? : '淇濆瓨'),
+          child: Text(_saving ? '保存中' : '保存'),
         ),
       ],
     );
@@ -677,7 +677,7 @@ class ProfileLogoutButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: const Icon(Icons.logout_rounded, size: 18),
-        label: const Text('閫€鍑虹櫥褰?),
+        label: const Text('退出登录'),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFFFA0A8),
           side: const BorderSide(color: Color(0x66FFA0A8)),
