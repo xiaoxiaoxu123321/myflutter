@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -53,17 +53,13 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
   void _openLogin() {
     Navigator.of(context)
         .push(
-          MaterialPageRoute(
-            builder: (_) => LoginPage(
-              nfcDataLines: const [],
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => LoginPage(nfcDataLines: const [])),
         )
         .then((loggedIn) {
-      if (loggedIn == true) {
-        _loadUser();
-      }
-    });
+          if (loggedIn == true) {
+            _loadUser();
+          }
+        });
   }
 
   void _enterGuestMode() {
@@ -72,9 +68,9 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       _errorMessage = null;
       _loadingUser = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('提示')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('提示')));
   }
 
   Future<void> _editNickname() async {
@@ -98,7 +94,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
             autofocus: true,
             maxLength: 64,
             decoration: const InputDecoration(
-              hintText: '璇疯緭鍏ユ樀绉?,
+              hintText: '请输入昵称',
               counterText: '',
             ),
           ),
@@ -108,7 +104,8 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
               child: const Text('鍙栨秷'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
               child: const Text('淇濆瓨'),
             ),
           ],
@@ -148,33 +145,33 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       _errorMessage = null;
       _loadingUser = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('提示')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('提示')));
   }
 
   void _openPrivacyPolicy() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
   }
 
   void _openUserAgreement() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const UserAgreementPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const UserAgreementPage()));
   }
 
   void _openDisclaimer() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const DisclaimerPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const DisclaimerPage()));
   }
 
   void _openContactUs() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()));
   }
 
   Future<void> _openPasswordReset() async {
@@ -187,21 +184,21 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
   void _sharePublicId() {
     final publicId = AuthSession.user?['publicId']?.toString() ?? '';
     if (publicId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('璇峰厛鐧诲綍鍚庡垎浜獻D')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('璇峰厛鐧诲綍鍚庡垎浜獻D')));
       return;
     }
     Clipboard.setData(ClipboardData(text: publicId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('宸插鍒跺垎浜獻D锛?publicId')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('宸插鍒跺垎浜獻D锛?publicId')));
   }
 
   void _openVersionInfo() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const VersionInfoPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const VersionInfoPage()));
   }
 
   @override
@@ -209,9 +206,12 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     final user = AuthSession.user;
     final isLoggedIn = AuthSession.isLoggedIn && AuthSession.token != null;
     final isGuest = AuthSession.isGuest;
-    final name = user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
+    final name =
+        user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
     final publicId = user?['publicId']?.toString();
-    final idText = publicId == null || publicId.isEmpty ? 'ID：-' : 'ID：$publicId';
+    final idText = publicId == null || publicId.isEmpty
+        ? 'ID：-'
+        : 'ID：$publicId';
 
     return Container(
       decoration: BoxDecoration(
@@ -443,17 +443,17 @@ class ProfileHeader extends StatelessWidget {
                     ],
                     if (isLoggedIn)
                       SizedBox(
-                      width: 30,
-                      height: 30,
-                      child: IconButton(
-                        onPressed: loading ? null : onEdit,
-                        icon: const Icon(Icons.edit_rounded),
-                        iconSize: 16,
-                        color: const Color(0xFFDCA6FF),
-                        padding: EdgeInsets.zero,
-                        tooltip: '淇敼鏄电О',
+                        width: 30,
+                        height: 30,
+                        child: IconButton(
+                          onPressed: loading ? null : onEdit,
+                          icon: const Icon(Icons.edit_rounded),
+                          iconSize: 16,
+                          color: const Color(0xFFDCA6FF),
+                          padding: EdgeInsets.zero,
+                          tooltip: '淇敼鏄电О',
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 if (errorMessage != null) ...[
@@ -550,7 +550,9 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+      setState(
+        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) setState(() => _sendingCode = false);
     }
@@ -561,7 +563,10 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
     final code = _codeController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
-    if (phone.isEmpty || code.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (phone.isEmpty ||
+        code.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       setState(() => _errorMessage = '请完整填写信息');
       return;
     }
@@ -583,12 +588,14 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
       );
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('密码已修改，请使用新密码登录')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('密码已修改，请使用新密码登录')));
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+      setState(
+        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -623,7 +630,9 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
                 TextButton(
                   onPressed: _sendingCode || _countdown > 0 ? null : _sendCode,
                   child: Text(
-                    _countdown > 0 ? '${_countdown}s' : (_sendingCode ? '发送中' : '获取验证码'),
+                    _countdown > 0
+                        ? '${_countdown}s'
+                        : (_sendingCode ? '发送中' : '获取验证码'),
                   ),
                 ),
               ],
@@ -682,7 +691,9 @@ class ProfileLogoutButton extends StatelessWidget {
           foregroundColor: const Color(0xFFFFA0A8),
           side: const BorderSide(color: Color(0x66FFA0A8)),
           backgroundColor: const Color(0x331F1020),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -695,11 +706,7 @@ class ProfileLogoutButton extends StatelessWidget {
 }
 
 class ProfileMenuGroup extends StatelessWidget {
-  const ProfileMenuGroup({
-    super.key,
-    required this.title,
-    required this.items,
-  });
+  const ProfileMenuGroup({super.key, required this.title, required this.items});
 
   final String title;
   final List<ProfileMenuItemData> items;
@@ -778,9 +785,16 @@ class ProfileMenuRow extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFB995FF), width: 1.4),
+                  border: Border.all(
+                    color: const Color(0xFFB995FF),
+                    width: 1.4,
+                  ),
                 ),
-                child: Icon(item.icon, color: const Color(0xFFDDBEFF), size: 15),
+                child: Icon(
+                  item.icon,
+                  color: const Color(0xFFDDBEFF),
+                  size: 15,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -987,20 +1001,10 @@ class PrivacyPolicyContent extends StatelessWidget {
           SizedBox(height: 20),
           _PolicySection(
             title: '说明',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-              '内容说明。',
-              '内容说明。',
-            ],
+            paragraphs: ['内容说明。', '内容说明。', '内容说明。', '内容说明。'],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '2. 鎴戜滑濡備綍浣跨敤淇℃伅',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '2. 鎴戜滑濡備綍浣跨敤淇℃伅', paragraphs: ['内容说明。']),
         ],
       ),
     );
@@ -1065,13 +1069,7 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
           SizedBox(height: 20),
           _PolicySection(
             title: '鎴戜滑濡備綍浣跨敤淇℃伅',
-            paragraphs: [
-              '内容说明。',
-              '鎻愪緵鏈嶅姟',
-              '淇濆瓨瑙掕壊鏁版嵁',
-              '鎻愬崌浜у搧浣撻獙',
-              '椋庨櫓鎺у埗',
-            ],
+            paragraphs: ['内容说明。', '鎻愪緵鏈嶅姟', '淇濆瓨瑙掕壊鏁版嵁', '鎻愬崌浜у搧浣撻獙', '椋庨櫓鎺у埗'],
           ),
           SizedBox(height: 20),
           _PolicySection(
@@ -1089,13 +1087,7 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
             ],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '淇℃伅瀛樺偍',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '淇℃伅瀛樺偍', paragraphs: ['内容说明。', '内容说明。']),
         ],
       ),
     );
@@ -1249,20 +1241,10 @@ class UserAgreementContent extends StatelessWidget {
           SizedBox(height: 20),
           _PolicySection(
             title: '1. 璐﹀彿瑙勫垯',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-              '内容说明。',
-            ],
+            paragraphs: ['内容说明。', '内容说明。', '内容说明。'],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '2. 铏氭嫙鍐呭璇存槑',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '2. 铏氭嫙鍐呭璇存槑', paragraphs: ['内容说明。', '内容说明。']),
         ],
       ),
     );
@@ -1315,45 +1297,18 @@ class UpdatedUserAgreementContent extends StatelessWidget {
             ],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '铏氭嫙鍐呭',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '铏氭嫙鍐呭', paragraphs: ['内容说明。', '内容说明。']),
           SizedBox(height: 20),
           _PolicySection(
             title: '鎶藉崱瑙勫垯',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-              '内容说明。',
-            ],
+            paragraphs: ['内容说明。', '内容说明。', '内容说明。'],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '鐢ㄦ埛鐢熸垚鍐呭',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '鐢ㄦ埛鐢熸垚鍐呭', paragraphs: ['内容说明。', '内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '鏈嶅姟鍙樻洿',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '鏈嶅姟鍙樻洿', paragraphs: ['内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '鍗忚淇敼',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '鍗忚淇敼', paragraphs: ['内容说明。', '内容说明。']),
         ],
       ),
     );
@@ -1367,7 +1322,9 @@ class DisclaimerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return LegalShell(
       title: '鍏嶈矗澹版槑',
-      bottom: GradientReturnButton(onPressed: () => Navigator.of(context).pop()),
+      bottom: GradientReturnButton(
+        onPressed: () => Navigator.of(context).pop(),
+      ),
       child: const UpdatedDisclaimerContent(),
     );
   }
@@ -1406,26 +1363,11 @@ class DisclaimerContent extends StatelessWidget {
           SizedBox(height: 22),
           Text('内容说明'),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '1. AI鍐呭璇存槑',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '1. AI鍐呭璇存槑', paragraphs: ['内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '说明',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '说明', paragraphs: ['内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '3. 娴嬭瘯缁撴灉璇存槑',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '3. 娴嬭瘯缁撴灉璇存槑', paragraphs: ['内容说明。']),
         ],
       ),
     );
@@ -1465,17 +1407,9 @@ class UpdatedDisclaimerContent extends StatelessWidget {
           SizedBox(height: 22),
           Text('内容说明'),
           SizedBox(height: 12),
-          Text(
-            '内容说明。',
-          ),
+          Text('内容说明。'),
           SizedBox(height: 20),
-          _PolicySection(
-            title: 'AI鍐呭璇存槑',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: 'AI鍐呭璇存槑', paragraphs: ['内容说明。', '内容说明。']),
           SizedBox(height: 20),
           _PolicySection(
             title: '说明',
@@ -1489,28 +1423,11 @@ class UpdatedDisclaimerContent extends StatelessWidget {
             ],
           ),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '娴嬭瘯缁撴灉璇存槑',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '娴嬭瘯缁撴灉璇存槑', paragraphs: ['内容说明。', '内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '铏氭嫙瑙掕壊璇存槑',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '铏氭嫙瑙掕壊璇存槑', paragraphs: ['内容说明。', '内容说明。']),
           SizedBox(height: 20),
-          _PolicySection(
-            title: '鐢ㄦ埛璐ｄ换',
-            paragraphs: [
-              '内容说明。',
-            ],
-          ),
+          _PolicySection(title: '鐢ㄦ埛璐ｄ换', paragraphs: ['内容说明。']),
         ],
       ),
     );
@@ -2160,7 +2077,12 @@ class ContactIllustrationPainter extends CustomPainter {
     canvas.drawOval(Offset.zero & size, glow);
 
     final envelope = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.14, size.height * 0.24, size.width * 0.62, size.height * 0.5),
+      Rect.fromLTWH(
+        size.width * 0.14,
+        size.height * 0.24,
+        size.width * 0.62,
+        size.height * 0.5,
+      ),
       const Radius.circular(8),
     );
     final paint = Paint()
@@ -2184,7 +2106,12 @@ class ContactIllustrationPainter extends CustomPainter {
 
     final bubblePaint = Paint()..color = const Color(0xFF8E59FF);
     canvas.drawOval(
-      Rect.fromLTWH(size.width * 0.68, size.height * 0.54, size.width * 0.28, size.height * 0.22),
+      Rect.fromLTWH(
+        size.width * 0.68,
+        size.height * 0.54,
+        size.width * 0.28,
+        size.height * 0.22,
+      ),
       bubblePaint,
     );
     final dot = Paint()..color = const Color(0xFFD8C3FF);
@@ -2202,10 +2129,7 @@ class ContactIllustrationPainter extends CustomPainter {
 }
 
 class _PolicySection extends StatelessWidget {
-  const _PolicySection({
-    required this.title,
-    required this.paragraphs,
-  });
+  const _PolicySection({required this.title, required this.paragraphs});
 
   final String title;
   final List<String> paragraphs;
@@ -2241,18 +2165,19 @@ class PrivacyPolicyGlowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final topPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0x885526FF),
-          const Color(0x225526FF),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.68, size.height * 0.02),
-          radius: size.width * 0.44,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              const Color(0x885526FF),
+              const Color(0x225526FF),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.68, size.height * 0.02),
+              radius: size.width * 0.44,
+            ),
+          );
     canvas.drawCircle(
       Offset(size.width * 0.68, size.height * 0.02),
       size.width * 0.44,
@@ -2307,7 +2232,9 @@ class ProfileAvatar extends StatelessWidget {
           shape: BoxShape.circle,
           color: Color(0xFF17142A),
         ),
-        child: const ClipOval(child: CustomPaint(painter: ProfileAvatarPainter())),
+        child: const ClipOval(
+          child: CustomPaint(painter: ProfileAvatarPainter()),
+        ),
       ),
     );
   }
@@ -2319,18 +2246,19 @@ class ProfileGlowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final topGlowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xCC7138FF),
-          const Color(0x355727C8),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.8, size.height * 0.05),
-          radius: size.width * 0.42,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              const Color(0xCC7138FF),
+              const Color(0x355727C8),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.8, size.height * 0.05),
+              radius: size.width * 0.42,
+            ),
+          );
     canvas.drawCircle(
       Offset(size.width * 0.8, size.height * 0.05),
       size.width * 0.42,
@@ -2338,18 +2266,19 @@ class ProfileGlowPainter extends CustomPainter {
     );
 
     final bottomGlowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xAAE15CFF),
-          const Color(0x33A33BFF),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.52, size.height * 0.96),
-          radius: size.width * 0.34,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              const Color(0xAAE15CFF),
+              const Color(0x33A33BFF),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.52, size.height * 0.96),
+              radius: size.width * 0.34,
+            ),
+          );
     canvas.drawCircle(
       Offset(size.width * 0.52, size.height * 0.96),
       size.width * 0.34,
