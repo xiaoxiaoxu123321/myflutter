@@ -73,7 +73,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       _loadingUser = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('宸茶繘鍏ユ父瀹㈣闂?)),
+      const SnackBar(content: Text('提示')),
     );
   }
 
@@ -149,7 +149,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       _loadingUser = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('宸查€€鍑虹櫥褰?)),
+      const SnackBar(content: Text('提示')),
     );
   }
 
@@ -279,12 +279,12 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                   ),
                   const SizedBox(height: 10),
                   ProfileMenuGroup(
-                    title: '鍗忚涓庤鏄?,
+                    title: '说明',
                     items: [
                       ProfileMenuItemData(
                         icon: Icons.article_outlined,
                         title: '鐢ㄦ埛鍗忚',
-                        subtitle: '浣跨敤瑙勫垯涓庢潈鐩婅鏄?,
+                        subtitle: '说明',
                         onTap: _openUserAgreement,
                       ),
                       ProfileMenuItemData(
@@ -320,7 +320,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                       ProfileMenuItemData(
                         icon: Icons.chat_bubble_outline_rounded,
                         title: '鑱旂郴鎴戜滑',
-                        subtitle: '鎰忚鍙嶉涓庡鏈嶆敮鎸?,
+                        subtitle: '说明',
                         onTap: _openContactUs,
                       ),
                       ProfileMenuItemData(
@@ -935,7 +935,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                                   letterSpacing: 0,
                                 ),
                               ),
-                              child: const Text('鍚屾剰骞惰繑鍥?),
+                              child: const Text('确认'),
                             ),
                           ),
                         ),
@@ -979,26 +979,26 @@ class PrivacyPolicyContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('鎴戜滑闈炲父閲嶈鎮ㄧ殑涓汉淇℃伅淇濇姢锛屽苟鑷村姏浜庝繚鎶ゆ偍鐨勯殣绉佸畨鍏ㄣ€?),
+          Text('内容说明'),
           SizedBox(height: 20),
           _PolicySection(
-            title: '1. 鎴戜滑鏀堕泦鐨勪俊鎭?,
+            title: '说明',
             paragraphs: [
-              '1.1 璐﹀彿淇℃伅锛氬寘鎷敤鎴稩D銆佹樀绉般€佸ご鍍忋€佹€у埆銆佺敓鏃ョ瓑銆?,
-              '1.2 璁惧淇℃伅锛氬寘鎷澶囧瀷鍙枫€佹搷浣滅郴缁熺増鏈€佸簲鐢ㄧ増鏈€佽澶囨爣璇嗙绛夈€?,
-              '1.3 浣跨敤淇℃伅锛氬寘鎷媿鍗¤褰曘€佽鑹叉敹钘忚褰曘€丯FC缁戝畾璁板綍銆佷簰鍔ㄨ褰曘€佹祻瑙堣褰曠瓑銆?,
-              '1.4 鐢ㄦ埛涓婁紶鍐呭锛氬寘鎷ご鍍忋€佽闊炽€佽嚜瀹氫箟瑙掕壊褰㈣薄銆佺敤鎴峰弽棣堜俊鎭瓑銆?,
+              '内容说明。',
+              '内容说明。',
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '2. 鎴戜滑濡備綍浣跨敤淇℃伅',
             paragraphs: [
-              '鐢ㄤ簬鐧诲綍璁よ瘉銆佽处鍙峰畨鍏ㄣ€佹湇鍔″睍绀恒€佽祫浜х粦瀹氥€佺ぜ鐗╀簰鍔ㄣ€佸鎴锋敮鎸佷笌浜у搧浣撻獙浼樺寲銆?,
+              '内容说明。',
             ],
           ),
         ],
@@ -1034,14 +1034,14 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('鎴戜滑闈炲父閲嶈鎮ㄧ殑涓汉淇℃伅淇濇姢銆?),
+          Text('内容说明'),
           SizedBox(height: 20),
           _PolicySection(
-            title: '鎴戜滑鏀堕泦鐨勪俊鎭?,
+            title: '说明',
             paragraphs: [
               '璐﹀彿淇℃伅',
               '鐢ㄦ埛ID',
@@ -1058,7 +1058,7 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
               '浜掑姩璁板綍',
               '鐢ㄦ埛涓婁紶鍐呭',
               '澶村儚',
-              '鑷畾涔夎闊?,
+              '内容说明。',
               '鐢ㄦ埛鍙嶉淇℃伅',
             ],
           ),
@@ -1066,7 +1066,7 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
           _PolicySection(
             title: '鎴戜滑濡備綍浣跨敤淇℃伅',
             paragraphs: [
-              '鐢ㄤ簬锛?,
+              '内容说明。',
               '鎻愪緵鏈嶅姟',
               '淇濆瓨瑙掕壊鏁版嵁',
               '鎻愬崌浜у搧浣撻獙',
@@ -1077,23 +1077,23 @@ class UpdatedPrivacyPolicyContent extends StatelessWidget {
           _PolicySection(
             title: '鏉冮檺璇存槑',
             paragraphs: [
-              '鍙兘鐢宠浠ヤ笅鏉冮檺锛?,
-              '楹﹀厠椋庢潈闄?,
-              '鐢ㄤ簬褰曞埗瑙掕壊浜掑姩璇煶銆?,
+              '内容说明。',
+              '内容说明。',
+              '内容说明。',
               '鐩稿唽鏉冮檺',
-              '鐢ㄤ簬涓婁紶澶村儚鍥剧墖銆?,
+              '内容说明。',
               '鐩告満鏉冮檺',
-              '鐢ㄤ簬鎷嶆憚澶村儚鎴栦笂浼犵収鐗囥€?,
+              '内容说明。',
               'NFC鏉冮檺',
-              '鐢ㄤ簬璇嗗埆鍜岀粦瀹氬疄浣撹鑹茶创绾搞€?,
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '淇℃伅瀛樺偍',
             paragraphs: [
-              '鐢ㄦ埛鏁版嵁灏嗛€氳繃鍔犲瘑鏂瑰紡杩涜瀛樺偍銆?,
-              '鏈粡鐢ㄦ埛鍚屾剰涓嶄細鍚戠涓夋柟鍑哄敭涓汉淇℃伅銆?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
         ],
@@ -1195,7 +1195,7 @@ class UserAgreementPage extends StatelessWidget {
                                   letterSpacing: 0,
                                 ),
                               ),
-                              child: const Text('鍚屾剰骞惰繑鍥?),
+                              child: const Text('确认'),
                             ),
                           ),
                         ),
@@ -1239,28 +1239,28 @@ class UserAgreementContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼锛?),
+          Text('内容说明'),
           SizedBox(height: 8),
-          Text('褰撴偍娉ㄥ唽銆佺櫥褰曟垨浣跨敤鏈簲鐢ㄦ椂锛屽嵆瑙嗕负宸查槄璇诲苟鍚屾剰鏈崗璁殑鍏ㄩ儴鍐呭銆?),
+          Text('内容说明'),
           SizedBox(height: 20),
           _PolicySection(
             title: '1. 璐﹀彿瑙勫垯',
             paragraphs: [
-              '1.1 鐢ㄦ埛搴斾繚璇佹敞鍐屼俊鎭湡瀹炪€佸噯纭€佸悎娉曟湁鏁堛€?,
-              '1.2 鐢ㄦ埛涓嶅緱浠ヤ换浣曟柟寮忓啋鍏呬粬浜烘垨铏氭瀯韬唤杩涜娉ㄥ唽銆?,
-              '1.3 鐢ㄦ埛涓嶅緱鍒╃敤鏈簲鐢ㄤ粠浜嬭繚娉曡繚瑙勩€佷镜瀹充粬浜烘潈鐩婃垨骞叉壈骞冲彴姝ｅ父杩愯惀鐨勮涓恒€?,
+              '内容说明。',
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '2. 铏氭嫙鍐呭璇存槑',
             paragraphs: [
-              '2.1 搴旂敤鍐呯殑瑙掕壊銆侀亾鍏枫€佸奖鍍忋€佽创绾哥瓑鍧囦负铏氭嫙鏁板瓧鍐呭锛岀敤鎴疯幏寰楃殑鏄娇鐢ㄦ潈鑰岄潪鎵€鏈夋潈銆?,
-              '2.2 骞冲彴鏈夋潈鍦ㄦ硶寰嬪厑璁哥殑鑼冨洿鍐呭铏氭嫙鍐呭杩涜璋冩暣銆佹洿鏂颁笅绾裤€?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
         ],
@@ -1296,19 +1296,19 @@ class UpdatedUserAgreementContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼銆?),
+          Text('内容说明'),
           SizedBox(height: 12),
-          Text('褰撴偍娉ㄥ唽銆佺櫥褰曟垨浣跨敤鏈簲鐢ㄦ椂锛屽嵆瑙嗕负宸查槄璇诲苟鍚屾剰鏈崗璁€?),
+          Text('内容说明'),
           SizedBox(height: 20),
           _PolicySection(
             title: '璐﹀彿瑙勫垯',
             paragraphs: [
-              '鐢ㄦ埛搴斾繚璇佹敞鍐屼俊鎭湡瀹炲悎娉曘€?,
-              '涓嶅緱锛?,
+              '内容说明。',
+              '内容说明。',
               '鍐掑厖浠栦汉',
               '鍙戝竷杩濇硶鍐呭',
               '鍒╃敤绯荤粺杩涜楠氭壈',
@@ -1318,40 +1318,40 @@ class UpdatedUserAgreementContent extends StatelessWidget {
           _PolicySection(
             title: '铏氭嫙鍐呭',
             paragraphs: [
-              '搴旂敤鍐呰鑹层€侀亾鍏枫€佹娊鍗″鍔辩瓑鍧囧睘浜庤櫄鎷熸暟瀛楀唴瀹广€?,
-              '鐢ㄦ埛鑾峰緱鐨勬槸浣跨敤鏉冭€岄潪鎵€鏈夋潈銆?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '鎶藉崱瑙勫垯',
             paragraphs: [
-              '鎶藉崱缁撴灉鐢辨鐜囨満鍒堕殢鏈虹敓鎴愩€?,
-              '鐢ㄦ埛鐞嗚В骞舵帴鍙楅殢鏈虹粨鏋溿€?,
-              '杩愯惀鏂逛笉浼氭壙璇鸿幏寰楁寚瀹氳鑹层€?,
+              '内容说明。',
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '鐢ㄦ埛鐢熸垚鍐呭',
             paragraphs: [
-              '鐢ㄦ埛涓婁紶鐨勫ご鍍忋€佹樀绉般€佽闊崇瓑鍐呭搴斿悎娉曞悎瑙勩€?,
-              '鐢ㄦ埛搴斾繚璇佹嫢鏈夌浉鍏冲唴瀹逛娇鐢ㄦ潈銆?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '鏈嶅姟鍙樻洿',
             paragraphs: [
-              '杩愯惀鏂规湁鏉冩牴鎹笟鍔″彂灞曡皟鏁村姛鑳姐€佹椿鍔ㄥ拰杩愯惀瑙勫垯銆?,
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '鍗忚淇敼',
             paragraphs: [
-              '杩愯惀鏂规湁鏉冨鏈崗璁繘琛屾洿鏂般€?,
-              '鏇存柊鍚庣户缁娇鐢ㄥ嵆瑙嗕负鍚屾剰銆?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
         ],
@@ -1400,30 +1400,30 @@ class DisclaimerContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?024骞?5鏈?0鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('璇锋偍鍦ㄤ娇鐢ㄦ湰搴旂敤鍓嶏紝浠旂粏闃呰鏈厤璐ｅ０鏄庛€?),
+          Text('内容说明'),
           SizedBox(height: 20),
           _PolicySection(
             title: '1. AI鍐呭璇存槑',
             paragraphs: [
-              '鏈簲鐢ㄦ墍鏈夊睍绀虹殑瀵硅瘽銆佸缓璁€佹祴璇曠粨鏋滃強瑙掕壊浜掑姩鍐呭鍧囩敱AI鏅鸿兘鐢熸垚锛岀浉鍏冲唴瀹逛粎渚涘弬鑰冿紝涓嶄唬琛ㄤ笓涓氭剰瑙併€?,
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '2. 闈炰笓涓氭湇鍔″０鏄?,
+            title: '说明',
             paragraphs: [
-              '鏈簲鐢ㄤ笉鎻愪緵浠ヤ笅鏈嶅姟锛氬尰鐤楁湇鍔°€佸績鐞嗗挩璇㈡湇鍔°€佹硶寰嬫湇鍔°€佹姇璧勭悊璐㈡湇鍔★紝鐢ㄦ埛涓嶅簲渚濊禆鏈簲鐢ㄥ唴瀹逛綔鍑洪噸澶у喅绛栥€?,
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '3. 娴嬭瘯缁撴灉璇存槑',
             paragraphs: [
-              '搴旂敤涓殑浜烘牸娴嬭瘯銆佹亱鐖辨祴璇曘€佹€ф牸娴嬭瘯绛夊姛鑳戒粎渚涘ū涔愬弬鑰冿紝娴嬭瘯缁撴灉涓嶆瀯鎴愬績鐞嗚瘖鏂緷鎹€?,
+              '内容说明。',
             ],
           ),
         ],
@@ -1459,56 +1459,56 @@ class UpdatedDisclaimerContent extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12),
-          Text('鏇存柊鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 2),
-          Text('鐢熸晥鏃ユ湡锛?026骞?鏈?鏃?),
+          Text('内容说明'),
           SizedBox(height: 22),
-          Text('娆㈣繋浣跨敤蹇冭薄棰戠巼銆?),
+          Text('内容说明'),
           SizedBox(height: 12),
           Text(
-            '鏈簲鐢ㄤ腑鐨勮鑹插舰璞°€佸璇濆唴瀹广€佷簰鍔ㄨ棰戙€佹娊鍗℃祴璇曘€佷汉鏍兼祴璇曠瓑鍐呭鍧囩敱绯荤粺鐢熸垚鎴栨暣鐞嗭紝浠呬緵濞变箰銆侀櫔浼村強绀句氦浣撻獙浣跨敤銆?,
+            '内容说明。',
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: 'AI鍐呭璇存槑',
             paragraphs: [
-              '鏈簲鐢ㄦ墍灞曠ず鐨勫璇濄€佸缓璁€佹祴璇曠粨鏋滃強瑙掕壊浜掑姩鍐呭鍧囩敱浜哄伐鏅鸿兘鐢熸垚銆?,
-              '鐩稿叧鍐呭浠呬緵鍙傝€冿紝涓嶄唬琛ㄤ笓涓氭剰瑙併€?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
-            title: '闈炰笓涓氭湇鍔″０鏄?,
+            title: '说明',
             paragraphs: [
-              '鏈簲鐢ㄤ笉鎻愪緵锛?,
+              '内容说明。',
               '鍖荤枟鏈嶅姟',
               '蹇冪悊鍜ㄨ鏈嶅姟',
               '娉曞緥鏈嶅姟',
               '鎶曡祫鐞嗚储鏈嶅姟',
-              '鐢ㄦ埛涓嶅簲渚濇嵁搴旂敤鍐呭浣滃嚭閲嶅ぇ鍐崇瓥銆?,
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '娴嬭瘯缁撴灉璇存槑',
             paragraphs: [
-              '搴旂敤涓殑浜烘牸娴嬭瘯銆佹亱鐖辨祴璇曘€佹€ф牸娴嬭瘯绛夊姛鑳戒粎渚涘ū涔愬弬鑰冦€?,
-              '娴嬭瘯缁撴灉涓嶆瀯鎴愬績鐞嗚瘖鏂緷鎹€?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '铏氭嫙瑙掕壊璇存槑',
             paragraphs: [
-              '搴旂敤涓殑瑙掕壊鍧囦负铏氭嫙瑙掕壊銆?,
-              '鍏惰█璁恒€佽涓哄拰瑙傜偣涓嶄唬琛ㄨ繍钀ユ柟绔嬪満銆?,
+              '内容说明。',
+              '内容说明。',
             ],
           ),
           SizedBox(height: 20),
           _PolicySection(
             title: '鐢ㄦ埛璐ｄ换',
             paragraphs: [
-              '鐢ㄦ埛搴旇嚜琛屽垽鏂苟鎵挎媴浣跨敤鏈簲鐢ㄤ骇鐢熺殑鐩稿叧椋庨櫓鍜屽悗鏋溿€?,
+              '内容说明。',
             ],
           ),
         ],
@@ -1534,7 +1534,7 @@ class VersionInfoPage extends StatelessWidget {
           SizedBox(height: 150),
           Center(
             child: Text(
-              'Copyright 漏 2026 蹇冭薄棰戠巼\n淇濈暀鎵€鏈夋潈鍒?,
+              '内容说明。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF8E91B4),
@@ -1603,7 +1603,7 @@ class VersionHero extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                '褰撳墠宸叉槸鏈€鏂扮増鏈?,
+                '内容说明。',
                 style: TextStyle(
                   color: Color(0xFFC4C7E1),
                   fontSize: 14,
@@ -1662,7 +1662,7 @@ class VersionInfoCard extends StatelessWidget {
             '鈥?鏀寔NFC瑙掕壊缁戝畾\n\n'
             '鈥?鏀寔浜掑姩瑙嗛\n\n'
             '鈥?鏀寔浜烘牸娴嬭瘯\n\n'
-            '鈥?浼樺寲鐢ㄦ埛浣撻獙锛屼慨澶嶅凡鐭ラ棶棰?,
+            '内容说明。',
             style: TextStyle(
               color: Color(0xFFD9DCF2),
               fontSize: 15,
@@ -1744,7 +1744,7 @@ class ContactUsPage extends StatelessWidget {
             icon: Icons.mail_outline_rounded,
             title: '瀹㈡湇閭',
             value: 'tgxe123@126.com',
-            subtitle: '24灏忔椂鍐呭洖澶?,
+            subtitle: '说明',
           ),
           SizedBox(height: 8),
           ContactMethodCard(
@@ -1756,7 +1756,7 @@ class ContactUsPage extends StatelessWidget {
           SizedBox(height: 72),
           Center(
             child: Text(
-              '鎰熻阿鎮ㄧ殑鏀寔涓庝俊浠?鈾?,
+              '内容说明。',
               style: TextStyle(
                 color: Color(0xFF979ABC),
                 fontSize: 14,
@@ -1795,7 +1795,7 @@ class UpdatedContactUsPage extends StatelessWidget {
           SizedBox(height: 72),
           Center(
             child: Text(
-              '鎰熻阿鎮ㄧ殑鏀寔涓庝俊浠?,
+              '内容说明。',
               style: TextStyle(
                 color: Color(0xFF979ABC),
                 fontSize: 14,
@@ -1903,7 +1903,7 @@ class ContactHeroCard extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  '鎴戜滑浼氬敖蹇负鎮ㄥ鐞?,
+                  '内容说明。',
                   style: TextStyle(
                     color: Color(0xFFD2D1E9),
                     fontSize: 16,
@@ -2131,7 +2131,7 @@ class GradientReturnButton extends StatelessWidget {
           ),
         ),
         child: const Text(
-          '鍚屾剰骞惰繑鍥?,
+          '内容说明。',
           style: TextStyle(
             color: Colors.white,
             fontSize: 15,
