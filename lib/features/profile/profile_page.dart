@@ -35,7 +35,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     });
     try {
       final user = await _apiClient.currentUser(token: token);
-      AuthSession.user = user;
+      await AuthSession.updateUser(user);
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -50,11 +50,10 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     await _loadUser();
   }
 
-  void _enterGuestMode() {
-    setState(() {
-      AuthSession.enterGuestMode();
-      _errorMessage = null;
-    });
+  Future<void> _enterGuestMode() async {
+    await AuthSession.enterGuestMode();
+    if (!mounted) return;
+    setState(() => _errorMessage = null);
     _showMessage('已进入游客模式');
   }
 
@@ -94,7 +93,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     });
     try {
       final user = await _apiClient.updateNickname(token: token, nickname: nickname);
-      AuthSession.user = user;
+      await AuthSession.updateUser(user);
       if (!mounted) return;
       setState(() {});
     } catch (error) {
@@ -105,9 +104,10 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     }
   }
 
-  void _logout() {
+  Future<void> _logout() async {
+    await AuthSession.clear();
+    if (!mounted) return;
     setState(() {
-      AuthSession.clear();
       _errorMessage = null;
       _loadingUser = false;
     });
@@ -145,10 +145,9 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     try {
       await _apiClient.deactivateAccount(token: token);
       if (!mounted) return;
-      setState(() {
-        AuthSession.clear();
-        _errorMessage = null;
-      });
+      await AuthSession.clear();
+      if (!mounted) return;
+      setState(() => _errorMessage = null);
       _showMessage('账号已注销');
     } catch (error) {
       if (!mounted) return;

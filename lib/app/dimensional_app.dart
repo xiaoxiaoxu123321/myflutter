@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/auth_session.dart';
 import '../features/home/home_page.dart';
 import '../features/profile/profile_page.dart';
 
@@ -35,7 +36,7 @@ class AppConsentGate extends StatefulWidget {
 class _AppConsentGateState extends State<AppConsentGate> {
   static const _appControlChannel = MethodChannel('dimensional/app_control');
 
-  var _accepted = false;
+  late var _accepted = AuthSession.isLoggedIn && AuthSession.token != null && AuthSession.token!.isNotEmpty;
 
   Future<void> _exitApp() async {
     try {
@@ -77,9 +78,9 @@ class ConsentPage extends StatefulWidget {
 }
 
 class _ConsentPageState extends State<ConsentPage> {
-  var _agreementChecked = false;
-  var _privacyChecked = false;
-  var _disclaimerChecked = false;
+  var _agreementChecked = true;
+  var _privacyChecked = true;
+  var _disclaimerChecked = true;
 
   bool get _allChecked =>
       _agreementChecked && _privacyChecked && _disclaimerChecked;

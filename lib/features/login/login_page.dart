@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
     var loginSucceeded = false;
     try {
       final data = await _apiClient.login(username: phone, password: password);
-      AuthSession.enterUserMode(
+      await AuthSession.enterUserMode(
         authToken: data['token'] as String?,
         currentUser: data['user'] as Map<String, dynamic>?,
       );
@@ -375,7 +375,7 @@ class _RegisterPageState extends State<RegisterPage> {
         confirmPassword: confirmPassword,
         referralCode: referralCode.isEmpty ? null : referralCode,
       );
-      AuthSession.enterUserMode(
+      await AuthSession.enterUserMode(
         authToken: data['token'] as String?,
         currentUser: data['user'] as Map<String, dynamic>?,
       );
