@@ -790,16 +790,37 @@ class ContactUsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LegalText('如果你在使用过程中遇到账号、NFC、抽卡、上传或其他问题，可以通过以下方式联系我们。'),
-        SizedBox(height: 18),
-        ContactRow(icon: Icons.mail_outline_rounded, label: '邮箱', value: 'support@example.com'),
-        SizedBox(height: 12),
-        ContactRow(icon: Icons.schedule_rounded, label: '服务时间', value: '工作日 10:00 - 18:00'),
-        SizedBox(height: 12),
-        ContactRow(icon: Icons.info_outline_rounded, label: '反馈说明', value: '请附上手机号、设备型号和问题截图，方便我们更快定位。'),
+        const LegalText('如果你在使用过程中遇到问题，可以通过手机号或扫码添加客服联系我们。'),
+        const SizedBox(height: 18),
+        const ContactRow(icon: Icons.phone_iphone_rounded, label: '商务合作', value: '13761318177'),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xCC111428),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF2C3153)),
+          ),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/customer-wechat-qr.png',
+                  width: 210,
+                  height: 210,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('扫码添加客服', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
       ],
     );
   }
