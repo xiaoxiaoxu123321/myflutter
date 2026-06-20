@@ -34,11 +34,11 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     if (!_accepted) return;
-    final username = _usernameController.text.trim();
+    final phone = _usernameController.text.trim();
     final password = _passwordController.text;
 
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = '请输入用户名和密码');
+    if (phone.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = '请输入手机号和密码');
       return;
     }
 
@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
 
     var loginSucceeded = false;
     try {
-      final data = await _apiClient.login(username: username, password: password);
+      final data = await _apiClient.login(username: phone, password: password);
       AuthSession.enterUserMode(
         authToken: data['token'] as String?,
         currentUser: data['user'] as Map<String, dynamic>?,
@@ -139,10 +139,10 @@ class _LoginPageState extends State<LoginPage> {
                             const Center(child: PlanetMark()),
                             const SizedBox(height: 30),
                             LoginInput(
-                              icon: Icons.person_outline_rounded,
-                              hintText: '请输入用户名',
+                              icon: Icons.phone_iphone_rounded,
+                              hintText: '请输入手机号',
                               controller: _usernameController,
-                              keyboardType: TextInputType.text,
+                              keyboardType: TextInputType.phone,
                             ),
                             const SizedBox(height: 12),
                             LoginInput(
