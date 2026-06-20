@@ -170,7 +170,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
             child: Column(
               children: [
                 SizedBox(
-                  height: 34,
+                  height: 46,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -191,7 +191,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '开启盲盒',
+                            '获取角色',
                             style: TextStyle(
                               color: Color(0xFFE9C4FF),
                               fontSize: 20,
@@ -299,7 +299,7 @@ class _GiftPageBodyState extends State<GiftPageBody> {
                         letterSpacing: 0,
                       ),
                     ),
-                    child: const Text('立即开启盲盒'),
+                    child: const Text('立即获取角色'),
                   ),
                 ),
               ],
@@ -497,7 +497,7 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
                           child: Column(
                             children: [
                               Text(
-                                _revealed ? '抽中了！' : '抽奖中...',
+                                _revealed ? '抽中了！' : '获取角色中.....',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -877,7 +877,7 @@ class GiftDrawCountCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '当前可抽奖次数',
+            '当前可获取角色次数',
             style: TextStyle(
               color: Color(0xFFECE5FF),
               fontSize: 12,

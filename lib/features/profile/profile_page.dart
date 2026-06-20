@@ -773,7 +773,7 @@ class VersionInfoContent extends StatelessWidget {
       children: [
         Center(child: ProfileAvatar(size: 76)),
         SizedBox(height: 18),
-        Center(child: Text('次元 NFC', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+        Center(child: Text('KapuKapu', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
         SizedBox(height: 8),
         Center(child: Text('当前版本：1.0.0', style: TextStyle(color: Color(0xFFB8B3DB), fontSize: 13))),
         SizedBox(height: 22),
