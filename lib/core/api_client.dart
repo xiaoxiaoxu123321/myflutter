@@ -134,6 +134,18 @@ class ApiClient {
     return body['data'] as Map<String, dynamic>;
   }
 
+  Future<void> deactivateAccount({required String token}) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/auth/me'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
+      throw Exception(body['message'] ?? 'Failed to deactivate account');
+    }
+  }
+
   Future<Map<String, dynamic>> bindNfcText({
     required String token,
     required String text,

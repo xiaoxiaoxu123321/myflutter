@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -16,8 +16,8 @@ class ProfilePageBody extends StatefulWidget {
 }
 
 class _ProfilePageBodyState extends State<ProfilePageBody> {
-  final _apiClient = ApiClient();
-  var _loadingUser = false;
+  final ApiClient _apiClient = ApiClient();
+  bool _loadingUser = false;
   String? _errorMessage;
 
   @override
@@ -28,114 +28,80 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
 
   Future<void> _loadUser() async {
     final token = AuthSession.token;
-    if (token == null || token.isEmpty) return;
+    if (token == null || AuthSession.isGuest) return;
     setState(() {
       _loadingUser = true;
       _errorMessage = null;
     });
     try {
       final user = await _apiClient.currentUser(token: token);
-      AuthSession.enterUserMode(authToken: token, currentUser: user);
-      if (!mounted) return;
-      setState(() {});
+      AuthSession.user = user;
     } catch (error) {
-      if (!mounted) return;
-      setState(
-        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
-      );
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
-      if (mounted) {
-        setState(() => _loadingUser = false);
-      }
+      if (mounted) setState(() => _loadingUser = false);
     }
   }
 
-  void _openLogin() {
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(builder: (_) => LoginPage(nfcDataLines: const [])),
-        )
-        .then((loggedIn) {
-          if (loggedIn == true) {
-            _loadUser();
-          }
-        });
+  Future<void> _openLogin() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginPage(nfcDataLines: [])));
+    if (!mounted) return;
+    setState(() {});
+    await _loadUser();
   }
 
   void _enterGuestMode() {
     setState(() {
       AuthSession.enterGuestMode();
       _errorMessage = null;
-      _loadingUser = false;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('提示')));
+    _showMessage('已进入游客模式');
   }
 
   Future<void> _editNickname() async {
     final token = AuthSession.token;
-    if (token == null || token.isEmpty) {
-      _openLogin();
+    if (token == null || AuthSession.isGuest) {
+      _showMessage('请先登录后修改昵称');
       return;
     }
-
-    final controller = TextEditingController(
-      text: AuthSession.user?['nickname']?.toString() ?? '',
-    );
+    final controller = TextEditingController(text: AuthSession.user?['nickname']?.toString() ?? '');
     final nickname = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF15162C),
-          title: const Text('淇敼鏄电О'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 64,
-            decoration: const InputDecoration(
-              hintText: '请输入昵称',
-              counterText: '',
-            ),
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF15182D),
+        title: const Text('修改昵称', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          maxLength: 16,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: '请输入昵称',
+            counterText: '',
+            hintStyle: TextStyle(color: Color(0xFF7E86A9)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('鍙栨秷'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('淇濆瓨'),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('保存')),
+        ],
+      ),
     );
     controller.dispose();
-
     if (nickname == null || nickname.isEmpty) return;
     setState(() {
       _loadingUser = true;
       _errorMessage = null;
     });
     try {
-      final user = await _apiClient.updateNickname(
-        token: token,
-        nickname: nickname,
-      );
+      final user = await _apiClient.updateNickname(token: token, nickname: nickname);
       AuthSession.user = user;
       if (!mounted) return;
       setState(() {});
     } catch (error) {
       if (!mounted) return;
-      setState(
-        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
-      );
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) {
-        setState(() => _loadingUser = false);
-      }
+      if (mounted) setState(() => _loadingUser = false);
     }
   }
 
@@ -145,60 +111,55 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
       _errorMessage = null;
       _loadingUser = false;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('提示')));
-  }
-
-  void _openPrivacyPolicy() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
-  }
-
-  void _openUserAgreement() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const UserAgreementPage()));
-  }
-
-  void _openDisclaimer() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const DisclaimerPage()));
-  }
-
-  void _openContactUs() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()));
+    _showMessage('已退出登录');
   }
 
   Future<void> _openPasswordReset() async {
-    await showDialog<void>(
-      context: context,
-      builder: (_) => PasswordResetDialog(apiClient: _apiClient),
-    );
+    await showDialog<void>(context: context, builder: (_) => PasswordResetDialog(apiClient: _apiClient));
   }
 
   void _sharePublicId() {
     final publicId = AuthSession.user?['publicId']?.toString() ?? '';
     if (publicId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('璇峰厛鐧诲綍鍚庡垎浜獻D')));
+      _showMessage('请先登录后分享ID');
       return;
     }
     Clipboard.setData(ClipboardData(text: publicId));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('宸插鍒跺垎浜獻D锛?publicId')));
+    _showMessage('已复制分享ID：$publicId');
   }
 
-  void _openVersionInfo() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const VersionInfoPage()));
+  Future<void> _deactivateAccount() async {
+    final token = AuthSession.token;
+    if (token == null || AuthSession.isGuest) {
+      _showMessage('请先登录后注销账号');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const DeactivateAccountDialog(),
+    );
+    if (confirmed != true) return;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+    setState(() => _loadingUser = true);
+    try {
+      await _apiClient.deactivateAccount(token: token);
+      if (!mounted) return;
+      setState(() {
+        AuthSession.clear();
+        _errorMessage = null;
+      });
+      _showMessage('账号已注销');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loadingUser = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -206,25 +167,15 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     final user = AuthSession.user;
     final isLoggedIn = AuthSession.isLoggedIn && AuthSession.token != null;
     final isGuest = AuthSession.isGuest;
-    final name =
-        user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
+    final name = isGuest ? '游客' : user?['nickname']?.toString() ?? (_loadingUser ? '加载中' : '请先登录');
     final publicId = user?['publicId']?.toString();
-    final idText = publicId == null || publicId.isEmpty
-        ? 'ID：-'
-        : 'ID：$publicId';
-
+    final idText = publicId == null || publicId.isEmpty ? 'ID：-' : 'ID：$publicId';
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF070817),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFF2C3153)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x99000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 24, offset: Offset(0, 12))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(21),
@@ -233,15 +184,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
           children: [
             const DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF090A19),
-                    Color(0xFF0D1027),
-                    Color(0xFF060712),
-                  ],
-                ),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF090A19), Color(0xFF0D1027), Color(0xFF060712)]),
               ),
             ),
             const CustomPaint(painter: ProfileGlowPainter()),
@@ -250,91 +193,40 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileHeader(
-                    name: isGuest ? '娓稿' : name,
-                    idText: idText,
-                    errorMessage: _errorMessage,
-                    loading: _loadingUser,
-                    isLoggedIn: isLoggedIn,
-                    isGuest: isGuest,
-                    onLogin: _openLogin,
-                    onGuest: _enterGuestMode,
-                    onEdit: _editNickname,
-                  ),
+                  ProfileHeader(name: name, idText: idText, errorMessage: _errorMessage, loading: _loadingUser, isLoggedIn: isLoggedIn, isGuest: isGuest, onLogin: _openLogin, onGuest: _enterGuestMode, onEdit: _editNickname),
                   const SizedBox(height: 26),
-                  const ProfileMenuGroup(
-                    title: '鍏充簬',
+                  ProfileMenuGroup(
+                    title: '关于',
                     items: [
-                      ProfileMenuItemData(
-                        icon: Icons.info_outline_rounded,
-                        title: '鍏充簬鎴戜滑',
-                        subtitle: '浜嗚В蹇冭薄棰戠巼',
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.info_outline_rounded,
-                        title: '浼佷笟鎰挎櫙',
-                        subtitle: '鎴戜滑鎯宠闄即鏇存湁娓╁害',
-                      ),
+                      ProfileMenuItemData(icon: Icons.person_outline_rounded, label: '个人资料', onTap: isLoggedIn ? _editNickname : _openLogin),
+                      ProfileMenuItemData(icon: Icons.workspace_premium_outlined, label: '我的权益', onTap: () => _showMessage(isLoggedIn ? '权益功能即将开放' : '请先登录')),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   ProfileMenuGroup(
-                    title: '说明',
+                    title: '协议与说明',
                     items: [
-                      ProfileMenuItemData(
-                        icon: Icons.article_outlined,
-                        title: '鐢ㄦ埛鍗忚',
-                        subtitle: '说明',
-                        onTap: _openUserAgreement,
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.lock_outline_rounded,
-                        title: '闅愮鏀跨瓥',
-                        subtitle: '浜嗚В鎴戜滑濡備綍淇濇姢鎮ㄧ殑淇℃伅',
-                        onTap: _openPrivacyPolicy,
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.fact_check_outlined,
-                        title: '鍏嶈矗澹版槑',
-                        subtitle: '浣跨敤鍓嶈闃呰閲嶈璇存槑',
-                        onTap: _openDisclaimer,
-                      ),
+                      ProfileMenuItemData(icon: Icons.description_outlined, label: '用户协议', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserAgreementPage()))),
+                      ProfileMenuItemData(icon: Icons.privacy_tip_outlined, label: '隐私政策', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()))),
+                      ProfileMenuItemData(icon: Icons.gavel_outlined, label: '免责声明', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisclaimerPage()))),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   ProfileMenuGroup(
-                    title: '鍏朵粬',
+                    title: '其他',
                     items: [
-                      ProfileMenuItemData(
-                        icon: Icons.password_rounded,
-                        title: '淇敼瀵嗙爜',
-                        subtitle: '閫氳繃鎵嬫満鍙烽獙璇佺爜閲嶇疆',
-                        onTap: _openPasswordReset,
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.ios_share_rounded,
-                        title: '分享ID',
-                        subtitle: '复制推荐码，好友注册后奖励10次抽卡',
-                        onTap: _sharePublicId,
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        title: '鑱旂郴鎴戜滑',
-                        subtitle: '说明',
-                        onTap: _openContactUs,
-                      ),
-                      ProfileMenuItemData(
-                        icon: Icons.add_circle_outline_rounded,
-                        title: '鐗堟湰淇℃伅',
-                        subtitle: '褰撳墠鐗堟湰 1.0.0',
-                        onTap: _openVersionInfo,
-                      ),
+                      ProfileMenuItemData(icon: Icons.lock_reset_rounded, label: '修改密码', onTap: _openPasswordReset),
+                      ProfileMenuItemData(icon: Icons.ios_share_rounded, label: '分享ID', onTap: _sharePublicId),
+                      ProfileMenuItemData(icon: Icons.support_agent_rounded, label: '联系我们', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()))),
+                      ProfileMenuItemData(icon: Icons.info_outline_rounded, label: '版本信息', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VersionInfoPage()))),
+                      ProfileMenuItemData(icon: Icons.no_accounts_outlined, label: '注销账号', onTap: _deactivateAccount),
                     ],
                   ),
                   if (isLoggedIn) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     ProfileLogoutButton(onPressed: _logout),
                   ],
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -371,120 +263,81 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 116,
+    final status = isLoggedIn ? '已登录' : isGuest ? '游客访问' : '未登录';
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF343A64)),
+        gradient: const LinearGradient(colors: [Color(0xFF171A32), Color(0xFF0E1124)]),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const ProfileAvatar(),
+          const ProfileAvatar(size: 66),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: isLoggedIn || isGuest ? null : onLogin,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (!isLoggedIn && !isGuest) ...[
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: loading ? null : onGuest,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFC47BFF),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: const Size(0, 30),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                        child: const Text('娓稿璁块棶'),
-                      ),
+                    Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800))),
+                    if (loading) ...[
+                      const SizedBox(width: 8),
+                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE6D5FF))),
                     ],
-                    if (isGuest) ...[
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: loading ? null : onLogin,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFC47BFF),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: const Size(0, 30),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                        child: const Text('鐧诲綍璐﹀彿'),
-                      ),
-                    ],
-                    if (isLoggedIn)
-                      SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: IconButton(
-                          onPressed: loading ? null : onEdit,
-                          icon: const Icon(Icons.edit_rounded),
-                          iconSize: 16,
-                          color: const Color(0xFFDCA6FF),
-                          padding: EdgeInsets.zero,
-                          tooltip: '淇敼鏄电О',
-                        ),
-                      ),
                   ],
                 ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    errorMessage!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFFFF9BA6),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 7),
-                Text(
-                  idText,
-                  style: const TextStyle(
-                    color: Color(0xFFE9EAFF),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
+                Text(idText, style: const TextStyle(color: Color(0xFFB8B3DB), fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 7),
+                Text(errorMessage ?? status, style: TextStyle(color: errorMessage == null ? const Color(0xFF7E86A9) : const Color(0xFFFF8A8A), fontSize: 12)),
               ],
             ),
           ),
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              if (isLoggedIn)
+                IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_rounded), color: const Color(0xFFE6D5FF), tooltip: '修改昵称')
+              else ...[
+                FilledButton(onPressed: onLogin, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7E70FF), foregroundColor: Colors.white), child: const Text('登录')),
+                const SizedBox(height: 8),
+                TextButton(onPressed: onGuest, child: const Text('游客访问')),
+              ],
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class DeactivateAccountDialog extends StatelessWidget {
+  const DeactivateAccountDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF15182D),
+      title: const Text('注销账号', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('注销后会删除当前账号及相关角色、卡片、签到、抽卡记录，且无法恢复。', style: TextStyle(color: Color(0xFFD6D8EA), height: 1.6)),
+          const SizedBox(height: 10),
+          const Text('请确认是否继续注销。', style: TextStyle(color: Color(0xFFFFA0B2), fontSize: 13, fontWeight: FontWeight.w700)),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF5C7A), foregroundColor: Colors.white),
+          child: const Text('确认注销'),
+        ),
+      ],
     );
   }
 }
@@ -502,11 +355,11 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _confirmController = TextEditingController();
   Timer? _timer;
-  var _countdown = 0;
-  var _sendingCode = false;
-  var _saving = false;
+  bool _sending = false;
+  bool _saving = false;
+  int _countdown = 0;
   String? _errorMessage;
 
   @override
@@ -515,7 +368,7 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
     _phoneController.dispose();
     _codeController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
@@ -525,77 +378,58 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
       setState(() => _errorMessage = '请输入手机号');
       return;
     }
-    if (_sendingCode || _countdown > 0) return;
-
     setState(() {
-      _sendingCode = true;
+      _sending = true;
       _errorMessage = null;
     });
     try {
       await widget.apiClient.sendPasswordResetSmsCode(phone: phone);
-      if (!mounted) return;
-      setState(() => _countdown = 60);
-      _timer?.cancel();
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        if (_countdown <= 1) {
-          timer.cancel();
-          setState(() => _countdown = 0);
-          return;
-        }
-        setState(() => _countdown -= 1);
-      });
+      _startCountdown();
     } catch (error) {
-      if (!mounted) return;
-      setState(
-        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
-      );
+      setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _sendingCode = false);
+      if (mounted) setState(() => _sending = false);
     }
   }
 
-  Future<void> _resetPassword() async {
+  void _startCountdown() {
+    _timer?.cancel();
+    setState(() => _countdown = 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_countdown <= 1) {
+        timer.cancel();
+        setState(() => _countdown = 0);
+      } else {
+        setState(() => _countdown -= 1);
+      }
+    });
+  }
+
+  Future<void> _save() async {
     final phone = _phoneController.text.trim();
     final code = _codeController.text.trim();
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
-    if (phone.isEmpty ||
-        code.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
+    final password = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
+    if ([phone, code, password, confirm].any((value) => value.isEmpty)) {
       setState(() => _errorMessage = '请完整填写信息');
       return;
     }
-    if (password != confirmPassword) {
+    if (password != confirm) {
       setState(() => _errorMessage = '两次输入的密码不一致');
       return;
     }
-
     setState(() {
       _saving = true;
       _errorMessage = null;
     });
     try {
-      await widget.apiClient.resetPassword(
-        phone: phone,
-        code: code,
-        password: password,
-        confirmPassword: confirmPassword,
-      );
+      await widget.apiClient.resetPassword(phone: phone, code: code, password: password, confirmPassword: confirm);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('密码已修改，请使用新密码登录')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('密码已修改，请重新登录')));
     } catch (error) {
-      if (!mounted) return;
-      setState(
-        () => _errorMessage = error.toString().replaceFirst('Exception: ', ''),
-      );
+      if (mounted) setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -603,72 +437,72 @@ class _PasswordResetDialogState extends State<PasswordResetDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final canSend = !_sending && _countdown == 0;
     return AlertDialog(
-      backgroundColor: const Color(0xFF15162C),
-      title: const Text('修改密码', style: TextStyle(color: Colors.white)),
-      content: SizedBox(
-        width: 320,
+      backgroundColor: const Color(0xFF15182D),
+      title: const Text('修改密码', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+      content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: '手机号'),
-            ),
-            const SizedBox(height: 10),
+            _ResetField(controller: _phoneController, hintText: '手机号', keyboardType: TextInputType.phone),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: '验证码'),
-                  ),
-                ),
+                Expanded(child: _ResetField(controller: _codeController, hintText: '验证码', keyboardType: TextInputType.number)),
                 const SizedBox(width: 10),
-                TextButton(
-                  onPressed: _sendingCode || _countdown > 0 ? null : _sendCode,
-                  child: Text(
-                    _countdown > 0
-                        ? '${_countdown}s'
-                        : (_sendingCode ? '发送中' : '获取验证码'),
+                SizedBox(
+                  width: 110,
+                  child: OutlinedButton(
+                    onPressed: canSend ? _sendCode : null,
+                    style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFE6D5FF), side: const BorderSide(color: Color(0xFF6D5CFF))),
+                    child: Text(_sending ? '发送中' : _countdown > 0 ? '${_countdown}s' : '获取验证码'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: '新密码'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: '确认新密码'),
-            ),
+            const SizedBox(height: 12),
+            _ResetField(controller: _passwordController, hintText: '新密码', obscureText: true),
+            const SizedBox(height: 12),
+            _ResetField(controller: _confirmController, hintText: '确认新密码', obscureText: true),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                style: const TextStyle(color: Color(0xFFFF9BA6), fontSize: 12),
-              ),
+              Text(_errorMessage!, style: const TextStyle(color: Color(0xFFFF8A8A), fontSize: 12)),
             ],
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _resetPassword,
-          child: Text(_saving ? '保存中' : '保存'),
-        ),
+        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(), child: const Text('取消')),
+        FilledButton(onPressed: _saving ? null : _save, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7E70FF)), child: Text(_saving ? '保存中' : '保存')),
       ],
+    );
+  }
+}
+
+class _ResetField extends StatelessWidget {
+  const _ResetField({required this.controller, required this.hintText, this.keyboardType, this.obscureText = false});
+
+  final TextEditingController controller;
+  final String hintText;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: Color(0xFF7E86A9)),
+        filled: true,
+        fillColor: const Color(0xFF0E1124),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF343A64))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF7E70FF))),
+      ),
     );
   }
 }
@@ -682,23 +516,15 @@ class ProfileLogoutButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 46,
+      height: 48,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.logout_rounded, size: 18),
+        icon: const Icon(Icons.logout_rounded),
         label: const Text('退出登录'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFFFA0A8),
-          side: const BorderSide(color: Color(0x66FFA0A8)),
-          backgroundColor: const Color(0x331F1020),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
+          foregroundColor: const Color(0xFFFF8A8A),
+          side: const BorderSide(color: Color(0x66FF8A8A)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
@@ -713,147 +539,68 @@ class ProfileMenuGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
-      decoration: BoxDecoration(
-        color: const Color(0xA80D1023),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF232A4A)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 14,
-            offset: Offset(0, 8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(title, style: const TextStyle(color: Color(0xFF8F98C3), fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xCC111428),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF2C3153)),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8, bottom: 8),
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFFC5C6E4),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-              ),
-            ),
+          child: Column(
+            children: [
+              for (var index = 0; index < items.length; index++)
+                ProfileMenuRow(item: items[index], showDivider: index < items.length - 1),
+            ],
           ),
-          for (var i = 0; i < items.length; i++) ...[
-            ProfileMenuRow(item: items[i]),
-            if (i != items.length - 1)
-              const Divider(
-                height: 1,
-                thickness: 1,
-                indent: 12,
-                endIndent: 12,
-                color: Color(0x332C365B),
-              ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
 class ProfileMenuRow extends StatelessWidget {
-  const ProfileMenuRow({super.key, required this.item});
+  const ProfileMenuRow({super.key, required this.item, required this.showDivider});
 
   final ProfileMenuItemData item;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: item.subtitle == null ? 56 : 60,
-      decoration: BoxDecoration(
-        color: const Color(0x73161A31),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: item.onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Row(
-            children: [
-              const SizedBox(width: 14),
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFB995FF),
-                    width: 1.4,
-                  ),
-                ),
-                child: Icon(
-                  item.icon,
-                  color: const Color(0xFFDDBEFF),
-                  size: 15,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    if (item.subtitle != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        item.subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF9CA4C6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFFE8E0FF),
-                size: 26,
-              ),
-              const SizedBox(width: 10),
-            ],
+    return InkWell(
+      onTap: item.onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                Icon(item.icon, color: const Color(0xFFE6D5FF), size: 22),
+                const SizedBox(width: 12),
+                Expanded(child: Text(item.label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+                const Icon(Icons.chevron_right_rounded, color: Color(0xFF6E7598)),
+              ],
+            ),
           ),
-        ),
+          if (showDivider) const Divider(height: 1, thickness: 1, indent: 48, endIndent: 14, color: Color(0xFF272C4C)),
+        ],
       ),
     );
   }
 }
 
 class ProfileMenuItemData {
-  const ProfileMenuItemData({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.onTap,
-  });
+  const ProfileMenuItemData({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback? onTap;
+  final String label;
+  final VoidCallback onTap;
 }
 
 class PrivacyPolicyPage extends StatelessWidget {
@@ -861,236 +608,7 @@ class PrivacyPolicyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF060817),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF253154)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(17),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF070A19),
-                            Color(0xFF090C1D),
-                            Color(0xFF050613),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const CustomPaint(painter: PrivacyPolicyGlowPainter()),
-                    Column(
-                      children: [
-                        SizedBox(
-                          height: 60,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(
-                                    Icons.chevron_left_rounded,
-                                    size: 34,
-                                  ),
-                                  color: Colors.white,
-                                  tooltip: '杩斿洖',
-                                ),
-                              ),
-                              const Text(
-                                '闅愮鏀跨瓥',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Expanded(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.fromLTRB(28, 14, 28, 22),
-                            child: UpdatedPrivacyPolicyContent(),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 10, 28, 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: FilledButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF761CFF),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                              child: const Text('确认'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PrivacyPolicyContent extends StatelessWidget {
-  const PrivacyPolicyContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼闅愮鏀跨瓥',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '说明',
-            paragraphs: ['内容说明。', '内容说明。', '内容说明。', '内容说明。'],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '2. 鎴戜滑濡備綍浣跨敤淇℃伅', paragraphs: ['内容说明。']),
-        ],
-      ),
-    );
-  }
-}
-
-class UpdatedPrivacyPolicyContent extends StatelessWidget {
-  const UpdatedPrivacyPolicyContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼闅愮鏀跨瓥',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '说明',
-            paragraphs: [
-              '璐﹀彿淇℃伅',
-              '鐢ㄦ埛ID',
-              '鏄电О',
-              '澶村儚',
-              '璁惧淇℃伅',
-              '璁惧鍨嬪彿',
-              '鎿嶄綔绯荤粺鐗堟湰',
-              '搴旂敤鐗堟湰',
-              '浣跨敤淇℃伅',
-              '鎶藉崱璁板綍',
-              '瑙掕壊鏀惰棌璁板綍',
-              'NFC缁戝畾璁板綍',
-              '浜掑姩璁板綍',
-              '鐢ㄦ埛涓婁紶鍐呭',
-              '澶村儚',
-              '内容说明。',
-              '鐢ㄦ埛鍙嶉淇℃伅',
-            ],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '鎴戜滑濡備綍浣跨敤淇℃伅',
-            paragraphs: ['内容说明。', '鎻愪緵鏈嶅姟', '淇濆瓨瑙掕壊鏁版嵁', '鎻愬崌浜у搧浣撻獙', '椋庨櫓鎺у埗'],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '鏉冮檺璇存槑',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-              '内容说明。',
-              '鐩稿唽鏉冮檺',
-              '内容说明。',
-              '鐩告満鏉冮檺',
-              '内容说明。',
-              'NFC鏉冮檺',
-              '内容说明。',
-            ],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '淇℃伅瀛樺偍', paragraphs: ['内容说明。', '内容说明。']),
-        ],
-      ),
-    );
+    return const LegalShell(title: '隐私政策', child: UpdatedPrivacyPolicyContent());
   }
 }
 
@@ -1099,219 +617,7 @@ class UserAgreementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF060817),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF253154)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(17),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF070A19),
-                            Color(0xFF090C1D),
-                            Color(0xFF050613),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const CustomPaint(painter: PrivacyPolicyGlowPainter()),
-                    Column(
-                      children: [
-                        SizedBox(
-                          height: 60,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(
-                                    Icons.chevron_left_rounded,
-                                    size: 34,
-                                  ),
-                                  color: Colors.white,
-                                  tooltip: '杩斿洖',
-                                ),
-                              ),
-                              const Text(
-                                '鐢ㄦ埛鍗忚',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Expanded(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.fromLTRB(28, 14, 28, 22),
-                            child: UpdatedUserAgreementContent(),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 10, 28, 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: FilledButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF761CFF),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                              child: const Text('确认'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class UserAgreementContent extends StatelessWidget {
-  const UserAgreementContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼鐢ㄦ埛鍗忚',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 8),
-          Text('内容说明'),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '1. 璐﹀彿瑙勫垯',
-            paragraphs: ['内容说明。', '内容说明。', '内容说明。'],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '2. 铏氭嫙鍐呭璇存槑', paragraphs: ['内容说明。', '内容说明。']),
-        ],
-      ),
-    );
-  }
-}
-
-class UpdatedUserAgreementContent extends StatelessWidget {
-  const UpdatedUserAgreementContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼鐢ㄦ埛鍗忚',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '璐﹀彿瑙勫垯',
-            paragraphs: [
-              '内容说明。',
-              '内容说明。',
-              '鍐掑厖浠栦汉',
-              '鍙戝竷杩濇硶鍐呭',
-              '鍒╃敤绯荤粺杩涜楠氭壈',
-            ],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '铏氭嫙鍐呭', paragraphs: ['内容说明。', '内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '鎶藉崱瑙勫垯',
-            paragraphs: ['内容说明。', '内容说明。', '内容说明。'],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '鐢ㄦ埛鐢熸垚鍐呭', paragraphs: ['内容说明。', '内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '鏈嶅姟鍙樻洿', paragraphs: ['内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '鍗忚淇敼', paragraphs: ['内容说明。', '内容说明。']),
-        ],
-      ),
-    );
+    return const LegalShell(title: '用户协议', child: UpdatedUserAgreementContent());
   }
 }
 
@@ -1320,117 +626,7 @@ class DisclaimerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LegalShell(
-      title: '鍏嶈矗澹版槑',
-      bottom: GradientReturnButton(
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      child: const UpdatedDisclaimerContent(),
-    );
-  }
-}
-
-class DisclaimerContent extends StatelessWidget {
-  const DisclaimerContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼鍏嶈矗澹版槑',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 20),
-          _PolicySection(title: '1. AI鍐呭璇存槑', paragraphs: ['内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '说明', paragraphs: ['内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '3. 娴嬭瘯缁撴灉璇存槑', paragraphs: ['内容说明。']),
-        ],
-      ),
-    );
-  }
-}
-
-class UpdatedDisclaimerContent extends StatelessWidget {
-  const UpdatedDisclaimerContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const DefaultTextStyle(
-      style: TextStyle(
-        color: Color(0xFFC9CEE3),
-        fontSize: 13,
-        height: 1.55,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '蹇冭薄棰戠巼鍏嶈矗澹版槑',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 12),
-          Text('内容说明'),
-          SizedBox(height: 2),
-          Text('内容说明'),
-          SizedBox(height: 22),
-          Text('内容说明'),
-          SizedBox(height: 12),
-          Text('内容说明。'),
-          SizedBox(height: 20),
-          _PolicySection(title: 'AI鍐呭璇存槑', paragraphs: ['内容说明。', '内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(
-            title: '说明',
-            paragraphs: [
-              '内容说明。',
-              '鍖荤枟鏈嶅姟',
-              '蹇冪悊鍜ㄨ鏈嶅姟',
-              '娉曞緥鏈嶅姟',
-              '鎶曡祫鐞嗚储鏈嶅姟',
-              '内容说明。',
-            ],
-          ),
-          SizedBox(height: 20),
-          _PolicySection(title: '娴嬭瘯缁撴灉璇存槑', paragraphs: ['内容说明。', '内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '铏氭嫙瑙掕壊璇存槑', paragraphs: ['内容说明。', '内容说明。']),
-          SizedBox(height: 20),
-          _PolicySection(title: '鐢ㄦ埛璐ｄ换', paragraphs: ['内容说明。']),
-        ],
-      ),
-    );
+    return const LegalShell(title: '免责声明', child: UpdatedDisclaimerContent());
   }
 }
 
@@ -1439,252 +635,7 @@ class VersionInfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LegalShell(
-      title: '鐗堟湰淇℃伅',
-      showBottomPadding: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          VersionHero(),
-          SizedBox(height: 30),
-          VersionInfoCard(),
-          SizedBox(height: 150),
-          Center(
-            child: Text(
-              '内容说明。',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF8E91B4),
-                fontSize: 14,
-                height: 1.8,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class VersionHero extends StatelessWidget {
-  const VersionHero({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const ProfileAvatar(),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Flexible(
-                    child: Text(
-                      '蹇冭薄棰戠巼',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF7044D6),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: const Text(
-                      'v1.0.0',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '内容说明。',
-                style: TextStyle(
-                  color: Color(0xFFC4C7E1),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class VersionInfoCard extends StatelessWidget {
-  const VersionInfoCard({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
-      decoration: BoxDecoration(
-        color: const Color(0x73101A33),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF28375D)),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          VersionInfoRow(
-            icon: Icons.workspace_premium_outlined,
-            label: '褰撳墠鐗堟湰',
-            value: 'v1.0.0',
-          ),
-          Divider(height: 32, color: Color(0x332C365B)),
-          VersionInfoRow(
-            icon: Icons.calendar_month_outlined,
-            label: '鏇存柊鏃ユ湡',
-            value: '2026-06-02',
-          ),
-          Divider(height: 32, color: Color(0x332C365B)),
-          Text(
-            '鏇存柊鍐呭',
-            style: TextStyle(
-              color: Color(0xFFE9EAFF),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 22),
-          Text(
-            'v1.0.0  棣栨涓婄嚎\n\n'
-            '鈥?鏀寔瑙掕壊鎶藉彇\n\n'
-            '鈥?鏀寔NFC瑙掕壊缁戝畾\n\n'
-            '鈥?鏀寔浜掑姩瑙嗛\n\n'
-            '鈥?鏀寔浜烘牸娴嬭瘯\n\n'
-            '内容说明。',
-            style: TextStyle(
-              color: Color(0xFFD9DCF2),
-              fontSize: 15,
-              height: 1.28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class VersionInfoRow extends StatelessWidget {
-  const VersionInfoRow({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFFC9A6FF), size: 22),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class ContactUsPage extends StatelessWidget {
-  const ContactUsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return LegalShell(
-      title: '鑱旂郴鎴戜滑',
-      showBottomPadding: false,
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ContactHeroCard(),
-          SizedBox(height: 12),
-          ContactMethodCard(
-            icon: Icons.headset_mic_outlined,
-            title: '瀹㈡湇鐢佃瘽',
-            value: 'tgxe123@126.com',
-            subtitle: '宸ヤ綔鏃?9:00鈥?8:00',
-          ),
-          SizedBox(height: 8),
-          ContactMethodCard(
-            icon: Icons.mail_outline_rounded,
-            title: '瀹㈡湇閭',
-            value: 'tgxe123@126.com',
-            subtitle: '说明',
-          ),
-          SizedBox(height: 8),
-          ContactMethodCard(
-            icon: Icons.business_center_outlined,
-            title: '鍟嗗姟鍚堜綔',
-            value: 'tgxe123@126.com',
-            subtitle: '娆㈣繋鍚堜綔娲借皥',
-          ),
-          SizedBox(height: 72),
-          Center(
-            child: Text(
-              '内容说明。',
-              style: TextStyle(
-                color: Color(0xFF979ABC),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const LegalShell(title: '版本信息', child: VersionInfoContent());
   }
 }
 
@@ -1693,244 +644,33 @@ class UpdatedContactUsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LegalShell(
-      title: '鑱旂郴鎴戜滑',
-      showBottomPadding: false,
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ContactHeroCard(),
-          SizedBox(height: 12),
-          CustomerWechatCard(),
-          SizedBox(height: 8),
-          ContactMethodCard(
-            icon: Icons.business_center_outlined,
-            title: '鍟嗗姟鍚堜綔',
-            value: '13761318177',
-            subtitle: '娆㈣繋鍚堜綔娲借皥',
-          ),
-          SizedBox(height: 72),
-          Center(
-            child: Text(
-              '内容说明。',
-              style: TextStyle(
-                color: Color(0xFF979ABC),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const LegalShell(title: '联系我们', child: ContactUsContent());
   }
 }
 
-class CustomerWechatCard extends StatelessWidget {
-  const CustomerWechatCard({super.key});
+class PrivacyPolicyContent extends StatelessWidget {
+  const PrivacyPolicyContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-      decoration: BoxDecoration(
-        color: const Color(0x73101A33),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF28375D)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.qr_code_2_rounded, color: Color(0xFFC9A6FF), size: 24),
-              SizedBox(width: 12),
-              Text(
-                '瀹㈡湇寰俊',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/customer-wechat-qr.png',
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const SizedBox(
-                  height: 260,
-                  child: Center(
-                    child: Text(
-                      '璇锋坊鍔犲鏈嶅井淇′簩缁寸爜鍥剧墖',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF9CA4C6),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const UpdatedPrivacyPolicyContent();
 }
 
-class ContactHeroCard extends StatelessWidget {
-  const ContactHeroCard({super.key});
+class UserAgreementContent extends StatelessWidget {
+  const UserAgreementContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 142,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: const Color(0x77131B38),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF392A73)),
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '鏈夐棶棰橈紵鑱旂郴鎴戜滑',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  '内容说明。',
-                  style: TextStyle(
-                    color: Color(0xFFD2D1E9),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 116,
-            height: 104,
-            child: CustomPaint(painter: ContactIllustrationPainter()),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const UpdatedUserAgreementContent();
 }
 
-class ContactMethodCard extends StatelessWidget {
-  const ContactMethodCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final String subtitle;
+class DisclaimerContent extends StatelessWidget {
+  const DisclaimerContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 118,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: const Color(0x73101A33),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF28375D)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF39236F),
-            ),
-            child: Icon(icon, color: const Color(0xFFC9A6FF), size: 32),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFA778FF),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFFA4A7C4),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const UpdatedDisclaimerContent();
 }
 
 class LegalShell extends StatelessWidget {
-  const LegalShell({
-    super.key,
-    required this.title,
-    required this.child,
-    this.bottom,
-    this.showBottomPadding = true,
-  });
+  const LegalShell({super.key, required this.title, required this.child, this.bottom, this.showBottomPadding = true});
 
   final String title;
   final Widget child;
@@ -1940,301 +680,271 @@ class LegalShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF060817),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF253154)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(17),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF070A19),
-                            Color(0xFF090C1D),
-                            Color(0xFF050613),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const CustomPaint(painter: PrivacyPolicyGlowPainter()),
-                    Column(
-                      children: [
-                        SizedBox(
-                          height: 60,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(
-                                    Icons.chevron_left_rounded,
-                                    size: 34,
-                                  ),
-                                  color: Colors.white,
-                                  tooltip: '杩斿洖',
-                                ),
-                              ),
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(28, 24, 28, 22),
-                            child: child,
-                          ),
-                        ),
-                        if (bottom != null)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 10, 28, 20),
-                            child: bottom,
-                          )
-                        else if (showBottomPadding)
-                          const SizedBox(height: 20),
-                      ],
-                    ),
+      backgroundColor: const Color(0xFF070817),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF090A19),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: CustomPaint(painter: PrivacyPolicyGlowPainter())),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(18, 18, 18, showBottomPadding ? 28 : 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  child,
+                  if (bottom != null) ...[
+                    const SizedBox(height: 18),
+                    bottom!,
                   ],
-                ),
+                ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class GradientReturnButton extends StatelessWidget {
-  const GradientReturnButton({super.key, required this.onPressed});
+class UpdatedPrivacyPolicyContent extends StatelessWidget {
+  const UpdatedPrivacyPolicyContent({super.key});
 
-  final VoidCallback onPressed;
+  static const sections = [
+    LegalSectionData('一、我们收集的信息', '为完成登录、注册、NFC 识别、角色绑定、抽卡、签到、推荐奖励等功能，我们可能收集手机号、昵称、用户ID、设备信息、操作记录以及你主动上传的图片、视频或音频素材。'),
+    LegalSectionData('二、信息的使用', '我们仅在提供服务、保障账号安全、排查故障、优化体验和履行法律义务的范围内使用你的信息。未经你的同意，我们不会将个人信息用于无关用途。'),
+    LegalSectionData('三、信息的存储与保护', '我们会采取合理的技术和管理措施保护数据安全。因互联网环境并非绝对安全，请你妥善保管账号、验证码和密码。'),
+    LegalSectionData('四、第三方服务', '部分短信、存储、媒体播放或支付能力可能由第三方服务提供。我们会要求第三方在必要范围内处理信息，并遵守相应的安全要求。'),
+    LegalSectionData('五、你的权利', '你可以在应用内查看或修改昵称、退出登录，也可以通过联系我们申请查询、更正或删除相关个人信息。'),
+    LegalSectionData('六、政策更新', '我们可能根据产品功能或法律要求更新本政策。更新后会在应用内展示新的版本内容。'),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF7E2BFF), Color(0xFF5E18E8)],
-          ),
-        ),
-        child: const Text(
-          '内容说明。',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
-        ),
-      ),
+    return const _PolicySectionList(sections: sections, footer: '更新日期：2026年6月20日');
+  }
+}
+
+class UpdatedUserAgreementContent extends StatelessWidget {
+  const UpdatedUserAgreementContent({super.key});
+
+  static const sections = [
+    LegalSectionData('一、服务说明', '本应用提供账号注册登录、游客访问、NFC 识别、角色展示、抽卡、签到、推荐奖励以及自定义人物素材上传等功能。'),
+    LegalSectionData('二、账号使用', '你应保证注册信息真实有效，并妥善保管账号、密码和验证码。因自行泄露或授权他人使用导致的损失，由你自行承担。'),
+    LegalSectionData('三、内容规范', '你上传或使用的图片、视频、音频、昵称等内容不得侵犯他人合法权益，不得包含违法、侵权、欺诈、低俗或恶意内容。'),
+    LegalSectionData('四、游客模式', '游客模式可访问部分功能，例如识别 NFC 并播放已关联人物视频，但不会进行绑定、领取、抽卡等需要账号的数据操作。'),
+    LegalSectionData('五、服务变更', '我们可能根据运营情况调整功能、规则或界面，并会尽量保持核心体验稳定。'),
+    LegalSectionData('六、违约处理', '如发现异常注册、恶意刷取奖励、攻击系统或上传违规内容，我们有权限制功能、冻结账号或删除相关内容。'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PolicySectionList(sections: sections, footer: '生效日期：2026年6月20日');
+  }
+}
+
+class UpdatedDisclaimerContent extends StatelessWidget {
+  const UpdatedDisclaimerContent({super.key});
+
+  static const sections = [
+    LegalSectionData('一、内容展示', '应用内角色、图片、视频、音频和互动效果仅用于产品体验展示，不构成任何承诺、保证或专业建议。'),
+    LegalSectionData('二、用户上传内容', '用户应对自行上传、绑定或分享的内容负责。若相关内容侵犯第三方权益或违反法律法规，责任由上传者自行承担。'),
+    LegalSectionData('三、NFC 使用', 'NFC 识别结果受设备能力、卡片状态、网络环境和绑定关系影响。游客模式下仅播放已关联人物视频，不会执行领取、绑定或资产变更。'),
+    LegalSectionData('四、服务可用性', '我们会努力保障服务稳定，但因网络、设备、第三方服务、系统维护等原因可能出现中断、延迟或失败。'),
+    LegalSectionData('五、奖励规则', '抽卡次数、签到奖励、推荐奖励等以系统实际记录为准。异常刷取、作弊或利用漏洞获得的奖励，我们有权进行更正。'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PolicySectionList(sections: sections, footer: '更新日期：2026年6月20日');
+  }
+}
+
+class VersionInfoContent extends StatelessWidget {
+  const VersionInfoContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(child: ProfileAvatar(size: 76)),
+        SizedBox(height: 18),
+        Center(child: Text('次元 NFC', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900))),
+        SizedBox(height: 8),
+        Center(child: Text('当前版本：1.0.0', style: TextStyle(color: Color(0xFFB8B3DB), fontSize: 13))),
+        SizedBox(height: 22),
+        LegalText('本版本支持手机号注册登录、游客访问、NFC 识别播放、角色资产管理、抽卡、签到、推荐奖励、自定义人物上传和协议查看。'),
+        SizedBox(height: 14),
+        LegalText('更新日期：2026年6月20日'),
+      ],
     );
   }
 }
 
-class ContactIllustrationPainter extends CustomPainter {
-  const ContactIllustrationPainter();
+class ContactUsContent extends StatelessWidget {
+  const ContactUsContent({super.key});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final glow = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0x887D36FF),
-          const Color(0x227D36FF),
-          Colors.transparent,
-        ],
-      ).createShader(Offset.zero & size);
-    canvas.drawOval(Offset.zero & size, glow);
-
-    final envelope = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        size.width * 0.14,
-        size.height * 0.24,
-        size.width * 0.62,
-        size.height * 0.5,
-      ),
-      const Radius.circular(8),
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LegalText('如果你在使用过程中遇到账号、NFC、抽卡、上传或其他问题，可以通过以下方式联系我们。'),
+        SizedBox(height: 18),
+        ContactRow(icon: Icons.mail_outline_rounded, label: '邮箱', value: 'support@example.com'),
+        SizedBox(height: 12),
+        ContactRow(icon: Icons.schedule_rounded, label: '服务时间', value: '工作日 10:00 - 18:00'),
+        SizedBox(height: 12),
+        ContactRow(icon: Icons.info_outline_rounded, label: '反馈说明', value: '请附上手机号、设备型号和问题截图，方便我们更快定位。'),
+      ],
     );
-    final paint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFD9B8FF), Color(0xFF7B34FF), Color(0xFF45209E)],
-      ).createShader(envelope.outerRect);
-    canvas.drawRRect(envelope, paint);
-
-    final line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFE9D8FF);
-    final path = Path()
-      ..moveTo(size.width * 0.16, size.height * 0.28)
-      ..lineTo(size.width * 0.45, size.height * 0.52)
-      ..lineTo(size.width * 0.74, size.height * 0.28);
-    canvas.drawPath(path, line);
-
-    final bubblePaint = Paint()..color = const Color(0xFF8E59FF);
-    canvas.drawOval(
-      Rect.fromLTWH(
-        size.width * 0.68,
-        size.height * 0.54,
-        size.width * 0.28,
-        size.height * 0.22,
-      ),
-      bubblePaint,
-    );
-    final dot = Paint()..color = const Color(0xFFD8C3FF);
-    for (var i = 0; i < 3; i++) {
-      canvas.drawCircle(
-        Offset(size.width * (0.76 + i * 0.07), size.height * 0.65),
-        2.5,
-        dot,
-      );
-    }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _PolicySection extends StatelessWidget {
-  const _PolicySection({required this.title, required this.paragraphs});
+class _PolicySectionList extends StatelessWidget {
+  const _PolicySectionList({required this.sections, required this.footer});
 
-  final String title;
-  final List<String> paragraphs;
+  final List<LegalSectionData> sections;
+  final String footer;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            height: 1.45,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 10),
-        for (final paragraph in paragraphs) ...[
-          Text(paragraph),
-          const SizedBox(height: 3),
+        for (final section in sections) ...[
+          _PolicySection(section: section),
+          const SizedBox(height: 16),
         ],
+        Text(footer, style: const TextStyle(color: Color(0xFF8F98C3), fontSize: 12, fontWeight: FontWeight.w600)),
       ],
     );
   }
 }
 
-class PrivacyPolicyGlowPainter extends CustomPainter {
-  const PrivacyPolicyGlowPainter();
+class LegalSectionData {
+  const LegalSectionData(this.title, this.body);
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final topPaint = Paint()
-      ..shader =
-          RadialGradient(
-            colors: [
-              const Color(0x885526FF),
-              const Color(0x225526FF),
-              Colors.transparent,
-            ],
-          ).createShader(
-            Rect.fromCircle(
-              center: Offset(size.width * 0.68, size.height * 0.02),
-              radius: size.width * 0.44,
-            ),
-          );
-    canvas.drawCircle(
-      Offset(size.width * 0.68, size.height * 0.02),
-      size.width * 0.44,
-      topPaint,
-    );
-
-    final linePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9
-      ..color = const Color(0x373C57FF);
-
-    for (var i = 0; i < 8; i++) {
-      final x = size.width * (0.58 + i * 0.046);
-      canvas.drawLine(
-        Offset(x, size.height * 0.02),
-        Offset(x + 14, size.height * 0.18),
-        linePaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  final String title;
+  final String body;
 }
 
-class ProfileAvatar extends StatelessWidget {
-  const ProfileAvatar({super.key});
+class _PolicySection extends StatelessWidget {
+  const _PolicySection({required this.section});
+
+  final LegalSectionData section;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 78,
-      height: 78,
-      padding: const EdgeInsets.all(2.2),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFFFF), Color(0xFFB777FF), Color(0xFF4337A8)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFC15CFF).withValues(alpha: 0.55),
-            blurRadius: 22,
-            spreadRadius: 1,
+        color: const Color(0xCC111428),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2C3153)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(section.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          LegalText(section.body),
+        ],
+      ),
+    );
+  }
+}
+
+class LegalText extends StatelessWidget {
+  const LegalText(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: const TextStyle(color: Color(0xFFD6D8EA), fontSize: 14, height: 1.7));
+  }
+}
+
+class ContactRow extends StatelessWidget {
+  const ContactRow({super.key, required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xCC111428),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2C3153)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFFE6D5FF)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Color(0xFF8F98C3), fontSize: 12, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+              ],
+            ),
           ),
         ],
       ),
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFF17142A),
-        ),
-        child: const ClipOval(
-          child: CustomPaint(painter: ProfileAvatarPainter()),
-        ),
+    );
+  }
+}
+
+class GradientReturnButton extends StatelessWidget {
+  const GradientReturnButton({super.key, required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7E70FF), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}
+
+class ProfileAvatar extends StatelessWidget {
+  const ProfileAvatar({super.key, this.size = 64});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFD36E), Color(0xFF8E6CFF), Color(0xFF49D5FF)]),
+        boxShadow: const [BoxShadow(color: Color(0x665B6CFF), blurRadius: 18, offset: Offset(0, 8))],
+      ),
+      child: Center(
+        child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: size * 0.45),
       ),
     );
   }
@@ -2245,161 +955,31 @@ class ProfileGlowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final topGlowPaint = Paint()
-      ..shader =
-          RadialGradient(
-            colors: [
-              const Color(0xCC7138FF),
-              const Color(0x355727C8),
-              Colors.transparent,
-            ],
-          ).createShader(
-            Rect.fromCircle(
-              center: Offset(size.width * 0.8, size.height * 0.05),
-              radius: size.width * 0.42,
-            ),
-          );
-    canvas.drawCircle(
-      Offset(size.width * 0.8, size.height * 0.05),
-      size.width * 0.42,
-      topGlowPaint,
-    );
-
-    final bottomGlowPaint = Paint()
-      ..shader =
-          RadialGradient(
-            colors: [
-              const Color(0xAAE15CFF),
-              const Color(0x33A33BFF),
-              Colors.transparent,
-            ],
-          ).createShader(
-            Rect.fromCircle(
-              center: Offset(size.width * 0.52, size.height * 0.96),
-              radius: size.width * 0.34,
-            ),
-          );
-    canvas.drawCircle(
-      Offset(size.width * 0.52, size.height * 0.96),
-      size.width * 0.34,
-      bottomGlowPaint,
-    );
-
-    final linePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..color = const Color(0x663C57FF);
-
-    for (var i = 0; i < 9; i++) {
-      final x = size.width * (0.58 + i * 0.045);
-      canvas.drawLine(
-        Offset(x, size.height * 0.03),
-        Offset(x + 14, size.height * 0.23),
-        linePaint,
-      );
-    }
-
-    final dotPaint = Paint()..color = const Color(0xAA8C65FF);
-    for (var i = 0; i < 22; i++) {
-      final x = size.width * (0.56 + (math.sin(i * 3.1).abs() * 0.38));
-      final y = size.height * (0.03 + (math.cos(i * 1.7).abs() * 0.18));
-      canvas.drawCircle(Offset(x, y), i % 4 == 0 ? 2.2 : 1.2, dotPaint);
-    }
+    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 42);
+    paint.color = const Color(0x665B6CFF);
+    canvas.drawCircle(Offset(size.width * 0.18, size.height * 0.12), math.min(size.width, size.height) * 0.18, paint);
+    paint.color = const Color(0x4449D5FF);
+    canvas.drawCircle(Offset(size.width * 0.86, size.height * 0.22), math.min(size.width, size.height) * 0.16, paint);
+    paint.color = const Color(0x33FFD36E);
+    canvas.drawCircle(Offset(size.width * 0.62, size.height * 0.88), math.min(size.width, size.height) * 0.2, paint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class ProfileAvatarPainter extends CustomPainter {
-  const ProfileAvatarPainter();
+class PrivacyPolicyGlowPainter extends CustomPainter {
+  const PrivacyPolicyGlowPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bg = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF37205B), Color(0xFF121735), Color(0xFF7041B7)],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, bg);
-
-    final hairPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFFE4D5FF), Color(0xFF8D66D9), Color(0xFF4D347F)],
-      ).createShader(Offset.zero & size);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.5, size.height * 0.48),
-        width: size.width * 0.58,
-        height: size.height * 0.68,
-      ),
-      hairPaint,
-    );
-
-    final facePaint = Paint()..color = const Color(0xFFE7C3E3);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.5, size.height * 0.52),
-        width: size.width * 0.42,
-        height: size.height * 0.48,
-      ),
-      facePaint,
-    );
-
-    final eyePaint = Paint()..color = const Color(0xFF4E246F);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.42, size.height * 0.52),
-        width: 5,
-        height: 8,
-      ),
-      eyePaint,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.58, size.height * 0.52),
-        width: 5,
-        height: 8,
-      ),
-      eyePaint,
-    );
-
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFF2E8FF);
-    for (var i = 0; i < 7; i++) {
-      final startX = size.width * (0.28 + i * 0.07);
-      final path = Path()
-        ..moveTo(startX, size.height * 0.18)
-        ..quadraticBezierTo(
-          startX - size.width * 0.05,
-          size.height * 0.45,
-          startX + size.width * 0.02,
-          size.height * 0.72,
-        );
-      canvas.drawPath(path, stroke);
-    }
-
-    final sparkle = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFFFD9FF);
-    canvas.drawLine(
-      Offset(size.width * 0.75, size.height * 0.2),
-      Offset(size.width * 0.9, size.height * 0.2),
-      sparkle,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.825, size.height * 0.12),
-      Offset(size.width * 0.825, size.height * 0.28),
-      sparkle,
-    );
+    final paint = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 54);
+    paint.color = const Color(0x554D7CFF);
+    canvas.drawCircle(Offset(size.width * 0.12, size.height * 0.16), math.min(size.width, size.height) * 0.22, paint);
+    paint.color = const Color(0x335BE4FF);
+    canvas.drawCircle(Offset(size.width * 0.9, size.height * 0.34), math.min(size.width, size.height) * 0.2, paint);
+    paint.color = const Color(0x228E6CFF);
+    canvas.drawCircle(Offset(size.width * 0.45, size.height * 0.92), math.min(size.width, size.height) * 0.26, paint);
   }
 
   @override
