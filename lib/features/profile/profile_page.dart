@@ -799,7 +799,7 @@ class ContactUsContent extends StatelessWidget {
         const SizedBox(height: 16),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: const Color(0xCC111428),
             borderRadius: BorderRadius.circular(16),
@@ -807,14 +807,23 @@ class ContactUsContent extends StatelessWidget {
           ),
           child: Column(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/customer-wechat-qr.png',
-                  width: 210,
-                  height: 210,
-                  fit: BoxFit.cover,
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final imageWidth = constraints.maxWidth < 280 ? constraints.maxWidth : 280.0;
+                  return SizedBox(
+                    width: imageWidth,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: AspectRatio(
+                        aspectRatio: 660 / 1002,
+                        child: Image.asset(
+                          'assets/images/customer-wechat-qr.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               const Text('扫码添加客服', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
