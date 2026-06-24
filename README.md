@@ -18,7 +18,7 @@ samples, guidance on mobile development, and a full API reference.
 
 ## API environment
 
-Production builds use `https://www.myguanzhu.com` by default.
+Production builds use `https://www.onlydu.com` by default.
 
 To run against the local Spring server:
 
@@ -29,5 +29,5 @@ flutter run --dart-define=API_BASE_URL=http://192.168.3.60:8080
 To explicitly build with the production API:
 
 ```bash
-flutter build ipa --dart-define=API_BASE_URL=https://www.myguanzhu.com
+flutter build ipa --dart-define=API_BASE_URL=https://www.onlydu.com
 ```
