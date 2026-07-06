@@ -8,10 +8,16 @@ class LoginPage extends StatefulWidget {
     super.key,
     required this.nfcDataLines,
     this.nfcText,
+    this.initialMessage,
+    this.showBackButton = true,
+    this.onLoginSuccess,
   });
 
   final List<String> nfcDataLines;
   final String? nfcText;
+  final String? initialMessage;
+  final bool showBackButton;
+  final VoidCallback? onLoginSuccess;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -24,6 +30,12 @@ class _LoginPageState extends State<LoginPage> {
   var _accepted = true;
   var _loading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _errorMessage = widget.initialMessage;
+  }
 
   @override
   void dispose() {
@@ -56,7 +68,12 @@ class _LoginPageState extends State<LoginPage> {
       );
       loginSucceeded = true;
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      final onLoginSuccess = widget.onLoginSuccess;
+      if (onLoginSuccess != null) {
+        onLoginSuccess();
+      } else {
+        Navigator.of(context).pop(true);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.toString().replaceFirst('Exception: ', ''));
@@ -103,18 +120,19 @@ class _LoginPageState extends State<LoginPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
+                            if (widget.showBackButton)
+                              IconButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                ),
+                                color: Colors.white,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 36,
+                                  height: 36,
+                                ),
                               ),
-                              color: Colors.white,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(
-                                width: 36,
-                                height: 36,
-                              ),
-                            ),
                             const SizedBox(height: 12),
                             const Text(
                               '欢迎回来',

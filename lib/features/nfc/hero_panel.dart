@@ -1,4 +1,5 @@
 ﻿import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:nfc_manager/nfc_manager_ios.dart';
 import 'package:video_player/video_player.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
+import '../../core/media_cache.dart';
 import '../login/login_page.dart';
 class _NfcReadResult {
   const _NfcReadResult({required this.lines, this.text});
@@ -452,9 +454,9 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     final fallbackUrl = card['previewVideoUrl']?.toString();
     final audioObjectKey = card['audioObjectKey']?.toString();
     final fallbackAudioUrl = card['audioUrl']?.toString();
-    final canProxyVideo = token != null && token.isNotEmpty && objectKey != null && objectKey.isNotEmpty;
+    final canRefreshVideoUrl = token != null && token.isNotEmpty && objectKey != null && objectKey.isNotEmpty;
     final canUseDirectVideo = fallbackUrl != null && fallbackUrl.isNotEmpty;
-    if (!canProxyVideo && !canUseDirectVideo) {
+    if (!canRefreshVideoUrl && !canUseDirectVideo) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('暂无可播放视频')),
       );
@@ -469,21 +471,38 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     );
 
     try {
-      final videoUrl = canProxyVideo
-          ? await _apiClient.giftVideoProxyUrl(token: token, objectKey: objectKey!)
+      final videoUrl = canRefreshVideoUrl
+          ? await _apiClient.giftMediaUrl(token: token, objectKey: objectKey)
           : (fallbackUrl ?? '');
+      final cachedVideoPath = await MediaCache.cachedMediaPath(
+        url: videoUrl,
+        cacheKey: objectKey?.isNotEmpty == true ? objectKey! : videoUrl,
+        extensionHint: 'mp4',
+      );
       String? audioUrl;
+      String? cachedAudioPath;
       if (audioObjectKey != null && audioObjectKey.isNotEmpty && token != null && token.isNotEmpty) {
         audioUrl = await _apiClient.giftMediaUrl(token: token, objectKey: audioObjectKey);
       } else if (fallbackAudioUrl != null && fallbackAudioUrl.isNotEmpty) {
         audioUrl = fallbackAudioUrl;
+      }
+      if (audioUrl != null && audioUrl.isNotEmpty) {
+        cachedAudioPath = await MediaCache.cachedMediaPath(
+          url: audioUrl,
+          cacheKey: audioObjectKey?.isNotEmpty == true ? audioObjectKey! : audioUrl,
+          extensionHint: 'm4a',
+        );
       }
       if (!mounted) return;
 
       if (defaultTargetPlatform == TargetPlatform.android) {
         Navigator.of(context, rootNavigator: true).pop();
         loadingVisible = false;
-        final opened = await _openNativeVideo(videoUrl, _nfcCardTitle(card), audioUrl: audioUrl);
+        final opened = await _openNativeVideo(
+          MediaCache.fileUri(cachedVideoPath),
+          _nfcCardTitle(card),
+          audioUrl: cachedAudioPath == null ? null : MediaCache.fileUri(cachedAudioPath),
+        );
         if (opened || !mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('视频播放器打开失败，请稍后重试')),
@@ -491,7 +510,7 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
         return;
       }
 
-      final prepared = await _prepareNfcVideo(videoUrl: videoUrl, audioUrl: audioUrl);
+      final prepared = await _prepareNfcVideo(videoPath: cachedVideoPath, audioPath: cachedAudioPath);
       if (!mounted) {
         prepared.dispose();
         return;
@@ -518,14 +537,14 @@ class _HeroPanelState extends State<HeroPanel> with WidgetsBindingObserver {
     }
   }
 
-  Future<_PreparedNfcVideo> _prepareNfcVideo({required String videoUrl, String? audioUrl}) async {
-    final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+  Future<_PreparedNfcVideo> _prepareNfcVideo({required String videoPath, String? audioPath}) async {
+    final controller = VideoPlayerController.file(File(videoPath));
     VideoPlayerController? audioController;
     try {
       await controller.initialize();
-      if (audioUrl != null && audioUrl.isNotEmpty) {
+      if (audioPath != null && audioPath.isNotEmpty) {
         await controller.setVolume(0);
-        audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
+        audioController = VideoPlayerController.file(File(audioPath));
         await audioController.initialize();
       } else {
         await controller.setVolume(1);

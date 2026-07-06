@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import 'package:video_player/video_player.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
+import '../../core/media_cache.dart';
 
 int _sortRarity(String a, String b) {
   const order = {'SSR': 0, 'SR': 1, 'R': 2, 'NORMAL': 3, 'CUSTOM': 4};
@@ -490,12 +491,18 @@ class _AssetPageBodyState extends State<AssetPageBody> {
     try {
       var videoUrl = fallbackUrl ?? '';
       if (objectKey != null && objectKey.isNotEmpty) {
-        videoUrl = await _apiClient.giftVideoProxyUrl(
+        videoUrl = await _apiClient.giftMediaUrl(
           token: token,
           objectKey: objectKey,
         );
       }
+      final cachedVideoPath = await MediaCache.cachedMediaPath(
+        url: videoUrl,
+        cacheKey: objectKey?.isNotEmpty == true ? objectKey! : videoUrl,
+        extensionHint: 'mp4',
+      );
       String? audioUrl;
+      String? cachedAudioPath;
       if (audioObjectKey != null && audioObjectKey.isNotEmpty) {
         audioUrl = await _apiClient.giftMediaUrl(
           token: token,
@@ -504,28 +511,39 @@ class _AssetPageBodyState extends State<AssetPageBody> {
       } else if (fallbackAudioUrl != null && fallbackAudioUrl.isNotEmpty) {
         audioUrl = fallbackAudioUrl;
       }
-      if (!mounted) return;
       if (audioUrl != null && audioUrl.isNotEmpty) {
-        final opened = await _openNativeVideo(videoUrl, character.name, audioUrl: audioUrl);
+        cachedAudioPath = await MediaCache.cachedMediaPath(
+          url: audioUrl,
+          cacheKey: audioObjectKey?.isNotEmpty == true ? audioObjectKey! : audioUrl,
+          extensionHint: 'm4a',
+        );
+      }
+      if (!mounted) return;
+      if (cachedAudioPath != null && cachedAudioPath.isNotEmpty) {
+        final opened = await _openNativeVideo(
+          MediaCache.fileUri(cachedVideoPath),
+          character.name,
+          audioUrl: MediaCache.fileUri(cachedAudioPath),
+        );
         if (opened || !mounted) return;
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AssetVideoPage(
               title: character.name,
-              videoUrl: videoUrl,
-              audioUrl: audioUrl,
+              videoPath: cachedVideoPath,
+              audioPath: cachedAudioPath,
             ),
           ),
         );
         return;
       }
-      final opened = await _openNativeVideo(videoUrl, character.name);
+      final opened = await _openNativeVideo(MediaCache.fileUri(cachedVideoPath), character.name);
       if (!opened && mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AssetVideoPage(
               title: character.name,
-              videoUrl: videoUrl,
+              videoPath: cachedVideoPath,
             ),
           ),
         );
@@ -609,11 +627,11 @@ class _AssetEmptyState extends StatelessWidget {
 }
 
 class AssetVideoPage extends StatefulWidget {
-  const AssetVideoPage({super.key, required this.title, required this.videoUrl, this.audioUrl});
+  const AssetVideoPage({super.key, required this.title, required this.videoPath, this.audioPath});
 
   final String title;
-  final String videoUrl;
-  final String? audioUrl;
+  final String videoPath;
+  final String? audioPath;
 
   @override
   State<AssetVideoPage> createState() => _AssetVideoPageState();
@@ -633,13 +651,13 @@ class _AssetVideoPageState extends State<AssetVideoPage> {
 
   Future<void> _initializePlayers() async {
     try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      _controller = VideoPlayerController.file(File(widget.videoPath));
       await _controller.initialize();
 
-      final audioUrl = widget.audioUrl;
-      if (audioUrl != null && audioUrl.isNotEmpty) {
+      final audioPath = widget.audioPath;
+      if (audioPath != null && audioPath.isNotEmpty) {
         await _controller.setVolume(0);
-        final audioController = VideoPlayerController.networkUrl(Uri.parse(audioUrl));
+        final audioController = VideoPlayerController.file(File(audioPath));
         _audioController = audioController;
         await audioController.initialize();
       } else {

@@ -1,10 +1,26 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api_config.dart';
+import 'auth_session.dart';
 class ApiClient {
   static const String baseUrl = ApiConfig.baseUrl;
+  Map<String, dynamic> _decodeBody(http.Response response) {
+    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final message = body['message']?.toString() ?? '';
+    final lowerMessage = message.toLowerCase();
+    final authExpired = response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        lowerMessage.contains('token is invalid or expired') ||
+        lowerMessage.contains('token expired') ||
+        lowerMessage.contains('invalid token');
+    if (authExpired) {
+      AuthSession.expire();
+      throw Exception('\u767b\u5f55\u5df2\u8fc7\u671f\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55');
+    }
+    return body;
+  }
 
   Future<Map<String, dynamic>> login({
     required String username,
@@ -16,7 +32,7 @@ class ApiClient {
       body: jsonEncode({'username': username, 'password': password}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Login failed');
     }
@@ -30,7 +46,7 @@ class ApiClient {
       body: jsonEncode({'phone': phone}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to send verification code');
     }
@@ -43,7 +59,7 @@ class ApiClient {
       body: jsonEncode({'phone': phone}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to send verification code');
     }
@@ -66,7 +82,7 @@ class ApiClient {
       }),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to reset password');
     }
@@ -94,7 +110,7 @@ class ApiClient {
       }),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Register failed');
     }
@@ -107,7 +123,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to get user info');
     }
@@ -127,7 +143,7 @@ class ApiClient {
       body: jsonEncode({'nickname': nickname}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to update nickname');
     }
@@ -140,7 +156,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to deactivate account');
     }
@@ -159,7 +175,7 @@ class ApiClient {
       body: jsonEncode({'text': text}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to bind asset');
     }
@@ -179,7 +195,7 @@ class ApiClient {
       body: jsonEncode({'text': text}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to read NFC card');
     }
@@ -195,7 +211,7 @@ class ApiClient {
       body: jsonEncode({'text': text}),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to read NFC card');
     }
@@ -208,7 +224,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to claim NFC card');
     }
@@ -220,7 +236,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load NFC cards');
     }
@@ -246,7 +262,7 @@ class ApiClient {
       }),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to bind NFC character');
     }
@@ -258,7 +274,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load upload quota');
     }
@@ -372,7 +388,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load assets');
     }
@@ -426,7 +442,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load draw count');
     }
@@ -439,7 +455,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Draw failed');
     }
@@ -452,7 +468,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Check in failed');
     }
@@ -468,7 +484,7 @@ class ApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load media url');
     }
@@ -483,7 +499,7 @@ class ApiClient {
       Uri.parse('$baseUrl/api/plaza/featured-banners'),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load plaza banners');
     }
@@ -498,29 +514,11 @@ class ApiClient {
       Uri.parse('$baseUrl/api/plaza/catalog'),
     );
 
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final body = _decodeBody(response);
     if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
       throw Exception(body['message'] ?? 'Failed to load plaza catalog');
     }
     return body['data'] as Map<String, dynamic>;
   }
 
-  Future<String> giftVideoProxyUrl({
-    required String token,
-    required String objectKey,
-  }) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/gifts/video-proxy-url?objectKey=${Uri.encodeComponent(objectKey)}'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    final body = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    if (response.statusCode < 200 || response.statusCode >= 300 || body['success'] != true) {
-      throw Exception(body['message'] ?? 'Failed to load video url');
-    }
-    final data = body['data'] as Map<String, dynamic>;
-    final path = data['url']?.toString() ?? '';
-    if (path.startsWith('http')) return path;
-    return '$baseUrl$path';
-  }
 }

@@ -1,8 +1,12 @@
+﻿import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/api_client.dart';
 import '../core/auth_session.dart';
 import '../features/home/home_page.dart';
+import '../features/login/login_page.dart';
 import '../features/profile/profile_page.dart';
 
 class DimensionalApp extends StatelessWidget {
@@ -36,7 +40,40 @@ class AppConsentGate extends StatefulWidget {
 class _AppConsentGateState extends State<AppConsentGate> {
   static const _appControlChannel = MethodChannel('dimensional/app_control');
 
+  final _apiClient = ApiClient();
   late var _accepted = AuthSession.isLoggedIn && AuthSession.token != null && AuthSession.token!.isNotEmpty;
+  StreamSubscription<void>? _expiredSubscription;
+  var _requireLogin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expiredSubscription = AuthSession.expiredStream.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _accepted = true;
+        _requireLogin = true;
+      });
+    });
+    _verifyRestoredSession();
+  }
+
+  Future<void> _verifyRestoredSession() async {
+    final token = AuthSession.token;
+    if (!AuthSession.isLoggedIn || token == null || token.isEmpty) return;
+    try {
+      final user = await _apiClient.currentUser(token: token);
+      await AuthSession.updateUser(user);
+    } catch (_) {
+      // ApiClient emits AuthSession.expiredStream when the token has expired.
+    }
+  }
+
+  @override
+  void dispose() {
+    _expiredSubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> _exitApp() async {
     try {
@@ -50,6 +87,20 @@ class _AppConsentGateState extends State<AppConsentGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (_requireLogin) {
+      return LoginPage(
+        nfcDataLines: const [],
+        initialMessage: '\u767b\u5f55\u5df2\u8fc7\u671f\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55',
+        showBackButton: false,
+        onLoginSuccess: () {
+          setState(() {
+            _accepted = true;
+            _requireLogin = false;
+          });
+        },
+      );
+    }
+
     if (_accepted) {
       return const HomePage();
     }
@@ -169,7 +220,7 @@ class _ConsentPageState extends State<ConsentPage> {
                               ),
                               const SizedBox(height: 18),
                               const Text(
-                                '欢迎使用心象频率',
+                                '\u6b22\u8fce\u4f7f\u7528\u5fc3\u8c61\u9891\u7387',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -179,7 +230,7 @@ class _ConsentPageState extends State<ConsentPage> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                '为了更好地为您提供服务，请您在使用前\n仔细阅读并同意以下协议',
+                                '\u4e3a\u4e86\u66f4\u597d\u5730\u4e3a\u60a8\u63d0\u4f9b\u670d\u52a1\uff0c\u8bf7\u60a8\u5728\u4f7f\u7528\u524d\n\u4ed4\u7ec6\u9605\u8bfb\u5e76\u540c\u610f\u4ee5\u4e0b\u534f\u8bae',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Color(0xFFC0C4DD),
@@ -192,8 +243,8 @@ class _ConsentPageState extends State<ConsentPage> {
                               const SizedBox(height: 22),
                               ConsentCheckRow(
                                 checked: _agreementChecked,
-                                text: '我已阅读并同意',
-                                linkText: '《用户协议》',
+                                text: '\u6211\u5df2\u9605\u8bfb\u5e76\u540c\u610f',
+                                linkText: '\u300a\u7528\u6237\u534f\u8bae\u300b',
                                 onChanged: (value) {
                                   setState(() => _agreementChecked = value);
                                 },
@@ -202,8 +253,8 @@ class _ConsentPageState extends State<ConsentPage> {
                               const SizedBox(height: 14),
                               ConsentCheckRow(
                                 checked: _privacyChecked,
-                                text: '我已阅读并同意',
-                                linkText: '《隐私政策》',
+                                text: '\u6211\u5df2\u9605\u8bfb\u5e76\u540c\u610f',
+                                linkText: '\u300a\u9690\u79c1\u653f\u7b56\u300b',
                                 onChanged: (value) {
                                   setState(() => _privacyChecked = value);
                                 },
@@ -212,8 +263,8 @@ class _ConsentPageState extends State<ConsentPage> {
                               const SizedBox(height: 14),
                               ConsentCheckRow(
                                 checked: _disclaimerChecked,
-                                text: '我已阅读并同意',
-                                linkText: '《免责声明》',
+                                text: '\u6211\u5df2\u9605\u8bfb\u5e76\u540c\u610f',
+                                linkText: '\u300a\u514d\u8d23\u58f0\u660e\u300b',
                                 onChanged: (value) {
                                   setState(() => _disclaimerChecked = value);
                                 },
@@ -241,7 +292,7 @@ class _ConsentPageState extends State<ConsentPage> {
                                       letterSpacing: 0,
                                     ),
                                   ),
-                                  child: const Text('同意并继续'),
+                                  child: const Text('\u540c\u610f\u5e76\u7ee7\u7eed'),
                                 ),
                               ),
                               const SizedBox(height: 18),
@@ -255,7 +306,7 @@ class _ConsentPageState extends State<ConsentPage> {
                                     letterSpacing: 0,
                                   ),
                                 ),
-                                child: const Text('不同意并退出'),
+                                child: const Text('\u4e0d\u540c\u610f\u5e76\u9000\u51fa'),
                               ),
                             ],
                           ),

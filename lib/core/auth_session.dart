@@ -1,4 +1,5 @@
-﻿import 'dart:convert';
+﻿import 'dart:async';
+import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,9 @@ class AuthSession {
   static bool isGuest = false;
   static String? token;
   static Map<String, dynamic>? user;
+  static final StreamController<void> _expiredController = StreamController<void>.broadcast();
+
+  static Stream<void> get expiredStream => _expiredController.stream;
 
   static Future<void> restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -66,6 +70,12 @@ class AuthSession {
     await prefs.remove(_isGuestKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
+  }
+
+  static Future<void> expire() async {
+    if (!isLoggedIn && token == null && user == null) return;
+    await clear();
+    _expiredController.add(null);
   }
 
   static Future<void> _save() async {

@@ -1,10 +1,12 @@
 ﻿import 'dart:math' as math;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
+import '../../core/media_cache.dart';
 
 class GiftPageBody extends StatefulWidget {
   const GiftPageBody({super.key});
@@ -401,19 +403,24 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
       var videoUrl = fallbackUrl ?? '';
       final token = AuthSession.token;
       if (objectKey != null && objectKey.isNotEmpty && token != null) {
-        videoUrl = await _apiClient.giftVideoProxyUrl(
+        videoUrl = await _apiClient.giftMediaUrl(
           token: token,
           objectKey: objectKey,
         );
       }
+      final cachedVideoPath = await MediaCache.cachedMediaPath(
+        url: videoUrl,
+        cacheKey: objectKey?.isNotEmpty == true ? objectKey! : videoUrl,
+        extensionHint: 'mp4',
+      );
       if (!mounted) return;
-      final opened = await _openNativeVideo(videoUrl);
+      final opened = await _openNativeVideo(MediaCache.fileUri(cachedVideoPath));
       if (!opened && mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => GiftVideoPage(
               title: widget.result.name,
-              videoUrl: videoUrl,
+              videoPath: cachedVideoPath,
             ),
           ),
         );
@@ -649,10 +656,10 @@ class _GiftDrawAnimationPageState extends State<GiftDrawAnimationPage>
 }
 
 class GiftVideoPage extends StatefulWidget {
-  const GiftVideoPage({super.key, required this.title, required this.videoUrl});
+  const GiftVideoPage({super.key, required this.title, required this.videoPath});
 
   final String title;
-  final String videoUrl;
+  final String videoPath;
 
   @override
   State<GiftVideoPage> createState() => _GiftVideoPageState();
@@ -666,7 +673,7 @@ class _GiftVideoPageState extends State<GiftVideoPage> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+    _controller = VideoPlayerController.file(File(widget.videoPath))
       ..initialize().then((_) {
         if (!mounted) return;
         setState(() => _ready = true);
