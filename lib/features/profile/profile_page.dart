@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth_session.dart';
+import '../../core/media_cache.dart';
 import '../login/login_page.dart';
 
 class ProfilePageBody extends StatefulWidget {
@@ -128,6 +129,37 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
     _showMessage('已复制分享ID：$publicId');
   }
 
+  Future<void> _clearMediaCache() async {
+    final size = await MediaCache.cacheSizeBytes();
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => ClearCacheDialog(cacheSizeText: _formatBytes(size)),
+    );
+    if (confirmed != true) return;
+    try {
+      await MediaCache.clear();
+      if (!mounted) return;
+      _showMessage('缓存已清理');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('清理失败：${error.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 MB';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var size = bytes.toDouble();
+    var unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit++;
+    }
+    final digits = unit <= 1 || size >= 10 ? 0 : 1;
+    return '${size.toStringAsFixed(digits)} ${units[unit]}';
+  }
+
   Future<void> _deactivateAccount() async {
     final token = AuthSession.token;
     if (token == null || AuthSession.isGuest) {
@@ -216,6 +248,7 @@ class _ProfilePageBodyState extends State<ProfilePageBody> {
                     items: [
                       ProfileMenuItemData(icon: Icons.lock_reset_rounded, label: '修改密码', onTap: _openPasswordReset),
                       ProfileMenuItemData(icon: Icons.ios_share_rounded, label: '分享ID', onTap: _sharePublicId),
+                      ProfileMenuItemData(icon: Icons.cleaning_services_outlined, label: '清理缓存', onTap: _clearMediaCache),
                       ProfileMenuItemData(icon: Icons.support_agent_rounded, label: '联系我们', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpdatedContactUsPage()))),
                       ProfileMenuItemData(icon: Icons.info_outline_rounded, label: '版本信息', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const VersionInfoPage()))),
                       ProfileMenuItemData(icon: Icons.no_accounts_outlined, label: '注销账号', onTap: _deactivateAccount),
@@ -335,6 +368,32 @@ class DeactivateAccountDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(true),
           style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF5C7A), foregroundColor: Colors.white),
           child: const Text('确认注销'),
+        ),
+      ],
+    );
+  }
+}
+
+class ClearCacheDialog extends StatelessWidget {
+  const ClearCacheDialog({super.key, required this.cacheSizeText});
+
+  final String cacheSizeText;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF15182D),
+      title: const Text('清理缓存', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+      content: Text(
+        '当前媒体缓存约 $cacheSizeText。清理后不会删除账号资料或已上传素材，再次播放时会重新下载。',
+        style: const TextStyle(color: Color(0xFFD6D8EA), height: 1.6),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7E70FF), foregroundColor: Colors.white),
+          child: const Text('确认清理'),
         ),
       ],
     );

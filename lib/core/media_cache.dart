@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 class MediaCache {
   const MediaCache._();
 
+  static const int maxCacheBytes = 500 * 1024 * 1024;
+
   static Future<String> cachedMediaPath({
     required String url,
     required String cacheKey,
@@ -14,6 +16,7 @@ class MediaCache {
     final directory = await _cacheDirectory();
     final file = File('${directory.path}${Platform.pathSeparator}${_fileName(cacheKey, url, extensionHint)}');
     if (await file.exists() && await file.length() > 0) {
+      await file.setLastModified(DateTime.now());
       return file.path;
     }
 
@@ -41,6 +44,7 @@ class MediaCache {
         throw Exception('media download failed: empty file');
       }
       await partialFile.rename(file.path);
+      await trimToSize(maxCacheBytes);
       return file.path;
     } catch (_) {
       if (await partialFile.exists()) {
@@ -53,6 +57,54 @@ class MediaCache {
   }
 
   static String fileUri(String path) => Uri.file(path).toString();
+
+  static Future<int> cacheSizeBytes() async {
+    final directory = await _cacheDirectory();
+    var total = 0;
+    await for (final entity in directory.list(recursive: true, followLinks: false)) {
+      if (entity is File) {
+        total += await entity.length();
+      }
+    }
+    return total;
+  }
+
+  static Future<void> clear() async {
+    final directory = await _cacheDirectory();
+    await for (final entity in directory.list(followLinks: false)) {
+      await entity.delete(recursive: true);
+    }
+  }
+
+  static Future<void> trimToSize(int maxBytes) async {
+    final directory = await _cacheDirectory();
+    final files = <File>[];
+    await for (final entity in directory.list(recursive: true, followLinks: false)) {
+      if (entity is File && !entity.path.endsWith('.part')) {
+        files.add(entity);
+      }
+    }
+
+    var total = 0;
+    final entries = <({File file, DateTime modified, int size})>[];
+    for (final file in files) {
+      final stat = await file.stat();
+      total += stat.size;
+      entries.add((file: file, modified: stat.modified, size: stat.size));
+    }
+    if (total <= maxBytes) return;
+
+    entries.sort((a, b) => a.modified.compareTo(b.modified));
+    for (final entry in entries) {
+      if (total <= maxBytes) break;
+      try {
+        await entry.file.delete();
+        total -= entry.size;
+      } catch (_) {
+        // Best effort: cache cleanup should never block media playback.
+      }
+    }
+  }
 
   static Future<Directory> _cacheDirectory() async {
     final root = await getApplicationCacheDirectory();
